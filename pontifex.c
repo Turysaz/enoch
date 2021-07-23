@@ -33,56 +33,22 @@ static int loglevel = 0;
 #define EXIT_BADARGS   -1
 #define EXIT_INTERNALERR -10
 
-/* **************************************************************************** 
- * Pontifex declarations and definitions
+/* ****************************************************************************
+ * I/O helper functions
  */
 
-/*
- *  Defines the operation modes: encrypt or decrypt.
- */
-enum px_mode { PX_ENCR, PX_DECR };
-
-/*
- *  This structs contains the evaluated settings
- *  defined by the CLI options.
- */
-struct px_args {
-    enum px_mode mode;
-    FILE *input;
-    FILE *output;
-    char key[54];
-    char raw;
-};
-
-void px_kparse(char *keystr, char *keynum) {
-    int i;
-    char numbuf[3] = { 0, 0, 0 };
-
-    for (i = 0; i < 54; i++){
-        numbuf[0] = keystr[i*2];
-        numbuf[1] = keystr[i*2+1];
-        if (!isdigit(numbuf[0]) || !isdigit(numbuf[1])) {
-            LOG_ERR(
-                "Key not numeric or too short! "
-                "Bad symbol at card #%i.\n",
-                i + 1);
-            exit(EXIT_BADARGS);
-        }
-        keynum[i] = atoi(numbuf);
-    }
-
-    if (keystr[54*2] != '\0') {
-        LOG_ERR("Key too long!\n");
+/* Opens a file and exits on failure.  */
+static FILE *px_fopen(char *path, char *mode) {
+    FILE *f = fopen(path, mode);
+    if (!f) {
+        LOG_ERR("Could not open '%s'!\n", path);
         exit(EXIT_BADARGS);
     }
-
-    return;
+    return f;
 }
 
-/*
- * Returns the number of read chars, including the terminating NUL.
- */
-int px_rall(FILE *stream, char **content) {
+/* Returns the number of read chars, including the terminating NUL. */
+static int px_rall(FILE *stream, char **content) {
     size_t bufsize = 1024,
            n = 0;
     char c;
@@ -105,13 +71,115 @@ int px_rall(FILE *stream, char **content) {
 
     return n;
 
-clean:
-    LOG_ERR("Internal realloc error!\n");
+clean: /* ON ERROR */
+    LOG_ERR("Internal memory error!\n");
     if (*content) free(*content);
     exit(EXIT_INTERNALERR);
 }
 
-void move(char *deck, int oldi, int newi) {
+/* Prints the content of a zero-terminated buffer in groups of 5 */
+static void px_output(const char *buffer, FILE *stream) {
+    char c;
+    int i = 0;
+    while((c = buffer[i++])) {
+        fputc(c, stream);
+
+        /* Grouping an linebreaks */
+        if (i % 40 == 0 ) {
+            fputc('\n', stream);
+        } else if (i % 5 == 0) {
+            fputc(' ', stream);
+        }
+    }
+
+    fputc('\n', stream);
+}
+
+/* ****************************************************************************
+ * Pontifex declarations and definitions
+ */
+
+/*
+ *  Defines the operation modes: encrypt or decrypt.
+ */
+enum px_mode {
+    PX_ENCR,
+    PX_DECR,
+    PX_STRM
+};
+
+/*
+ *  This structs contains the evaluated settings
+ *  defined by the CLI options.
+ */
+struct px_args {
+    enum px_mode mode;
+    char key[54];
+    FILE *input;
+    FILE *output;
+    char raw;
+    int length;
+};
+
+void px_kparse(char *keystr, char *keynum) {
+    int i = 0;
+    char numbuf[3] = { 0, 0, 0 };
+    char c;
+
+    while ((c = keystr[0]) == ' ' || c == 0x0a || c == 0x0d) {
+        keystr += sizeof(char); /* move start of string to right */
+        LOG_DBG("Ignoring whitespace before key...\n");
+    }
+
+    for (i = 0; i < 54; i++){
+        numbuf[0] = keystr[i*2];
+        numbuf[1] = keystr[i*2+1];
+        if (!isdigit(numbuf[0]) || !isdigit(numbuf[1])) {
+            LOG_ERR(
+                "Key not numeric or too short! "
+                "Bad symbol at card #%i.\n",
+                i + 1);
+            exit(EXIT_BADARGS);
+        }
+        keynum[i] = atoi(numbuf);
+    }
+
+    i = 54 * 2; /* Set one byte past expected key. */
+    while ((c = keystr[i++]) == ' ' || c == 0x0a || c == 0x0d) {
+        LOG_DBG("Ignoring whitespace after key...\n");
+    }
+
+    if (c != '\0') {
+        LOG_WRN(
+            "Data after key starting with 0x%2x. Ignoring remainder.\n",
+            c);
+    }
+
+    return;
+}
+
+void px_kread(struct px_args *args, char *filename) {
+    FILE *kfile;
+    char *buffer;
+    int failure = 0;
+
+    kfile = px_fopen(filename, "r");
+
+    px_rall(kfile, &buffer);
+    px_kparse(buffer, args->key);
+
+    if (fclose(kfile)) {
+        LOG_ERR("Could not close keyfile.\n");
+        failure = EXIT_INTERNALERR;
+        goto clean;
+    }
+
+clean:
+    free(buffer);
+    if (failure) exit(failure);
+}
+
+void px_move(char *deck, int oldi, int newi) {
     char buffer;
     int i;
 
@@ -142,7 +210,7 @@ void px_mjokers(char *deck) {
 
     i = (j % 53) + 1;
     LOG_DBG("Joker A from %i to %i.\n", j, i);
-    move(deck, j, i);
+    px_move(deck, j, i);
 
     for (i = 0; i < 54; i++) {
         if (deck[i] == 54) { j = i; break; }
@@ -156,7 +224,7 @@ void px_mjokers(char *deck) {
     i = (j % 53) + 1;
     i = (i % 53) + 1;
     LOG_DBG("Joker B from %i to %i.\n", j, i);
-    move(deck, j, i);
+    px_move(deck, j, i);
 }
 
 void px_tcut(char *deck) {
@@ -250,9 +318,14 @@ char px_next(char *deck) {
 char px_subst(char m, char k, enum px_mode mode) {
     char s; /* result */
 
-    s = mode == PX_ENCR 
-        ? (m + k) % 26 
-        : (52 + m - k) % 26;
+    if (mode == PX_ENCR) {
+        s = (m + k) % 26;
+    } else if (mode == PX_DECR) {
+        s = (52 + m - k) % 26;
+    } else {
+        LOG_ERR("Invalid mode for operation. Abort!\n");
+        exit(EXIT_INTERNALERR);
+    }
 
     s = s == 0 ? 26 : s;
 
@@ -297,47 +370,55 @@ void px_cipher(struct px_args *args) {
 
     /* Output */
     if (!args->raw && args->mode == PX_ENCR) {
-        fprintf(
-            args->output,
-            "\n\n=========== BEGIN PONTIFEX MESSAGE ============\n\n");
+        fprintf(args->output, "\n\n----- BEGIN PONTIFEX MESSAGE -----\n\n");
     }
 
-    i = 0;
-    while((c = output[i++])) {
-        fputc(c, args->output);
-
-        /* Grouping an linebreaks */
-        if (i % 40 == 0 ) {
-            fputc('\n', args->output);
-        } else if (i % 5 == 0) {
-            fputc(' ', args->output);
-        }
-    }
+    px_output(output, args->output);
 
     if (!args->raw && args->mode == PX_ENCR) {
-        fprintf(
-            args->output,
-            "\n\n===========  END PONTIFEX MESSAGE  ============\n");
+        fprintf(args->output, "\n-----  END PONTIFEX MESSAGE  -----\n\n");
     }
 
     fputc('\n', args->output);
 
 clean:
+    memset(deck, 0, sizeof(deck));
     free(message);
     if (output) free(output);
     if (failure) exit(failure);
 }
 
-static FILE *px_fopen(char *path, char *mode) {
-    FILE *f = fopen(path, mode);
-    if (!f) {
-        LOG_ERR("Could not open '%s'!\n", path);
-        exit(EXIT_BADARGS);
+void px_stream(struct px_args *args) {
+    int i;
+    char deck[54];
+    char c;
+    char *output;
+    int failure = 0;
+
+    memcpy(deck, args->key, sizeof(deck));
+
+    output = malloc((args->length + 1) * sizeof(char));
+    if (!output) {
+        LOG_ERR("Internal malloc error!\n");
+        failure = EXIT_INTERNALERR;
+        goto clean;
     }
-    return f;
+
+    for (i = 0; i < args->length; i++) {
+        c = px_next(deck);
+        c = c > 26 ? c - 26 : c;
+        output[i] = c + 0x40;
+    }
+    output[args->length] = '\0';
+
+    px_output(output, args->output);
+
+clean:
+    memset(deck, 0, sizeof(deck));
+    if (failure) exit(failure);
 }
 
-/* **************************************************************************** 
+/* ****************************************************************************
  * ARGP declarations and configuration
  */
 const char *argp_program_version = "Pontifex 1.0";
@@ -351,7 +432,7 @@ static struct argp_option px_opts[] = {
     /* name      key      arg flags    doc                              group */
     { "encrypt", 'e',       0, 0, "Encrypt input. This is the default.",    0 },
     { "decrypt", 'd',       0, 0, "Decrypt input."                            },
-    { "stream",  's',     "N", 0, "Just print N keystream numbers."           },
+    { "stream",  's',     "N", 0, "Just print N keystream symbols."           },
     { "input",   'i',  "FILE", 0, "Read input from FILE instead of stdin.", 1 },
     { "output",  'o',  "FILE", 0, "Write output to FILE instead of stdout."   },
     { "key",     'k',   "KEY", 0, "Define symmetric key.",                  2 },
@@ -363,6 +444,19 @@ static struct argp_option px_opts[] = {
     { 0 }
 };
 
+static int px_plength(char *number) {
+    char c;
+    int i = 0;
+
+    while((c = number[i++])) {
+        if(!isdigit(c)) {
+            LOG_ERR("%s is not a integer!\n", number)
+        }
+    }
+
+    return atoi(number);
+}
+
 /*
  * popts = parse opts
  */
@@ -373,38 +467,45 @@ static error_t px_popts(
     struct px_args *args = state->input;
 
     switch (key) {
-        case 'e':
+        case 'e': /* --encrypt */
             LOG_INF("Encrypt mode.\n");
             args->mode = PX_ENCR;
             break;
-        case 'd':
+        case 'd': /* --decrypt */
             LOG_INF("Decrypt mode.\n");
             args->mode = PX_DECR;
             break;
-        case 'i':
+        case 's': /* --stream=N */
+            LOG_INF("Stream mode.\n");
+            args->mode = PX_STRM;
+            args->length = px_plength(arg);
+            break;
+        case 'i': /* --input=FILE */
             /* TODO malicious args possible?*/
             LOG_INF("Reading input from '%s'\n", arg);
             args->input = px_fopen(arg, "r");
             break;
-        case 'o':
+        case 'o': /* --output=FILE */
             LOG_INF("Writing output to '%s'\n", arg);
             args->output = px_fopen(arg, "w");
             break;
-        case 'k':
+        case 'k': /* --key=KEY*/
             LOG_INF("Using key '%s'\n", arg);
             px_kparse(arg, args->key);
             break;
-        case 'p':
-        case   1:
-        case 's':
-        case 'f':
-            LOG_ERR("Reading key file not implemented yet.\n");
+        case 'f': /* --key-file=FILE */
+            LOG_INF("Using key from '%s'\n", arg);
+            px_kread(args, arg);
+            break;
+        case 'p': /* --password=PASSWD */
+        case   1: /* --gen-key=PASSWD */
+            LOG_ERR("The option is not implemented yet.\n");
             exit(-99);
             break;
-        case 'r':
+        case 'r': /* --raw */
             args->raw = 1;
             break;
-        case 'v':
+        case 'v': /* --verbose */
             loglevel++;
             break;
 /*
@@ -428,10 +529,6 @@ static struct argp px_parser = { px_opts, px_popts, px_adoc, px_doc };
 int main(int argc, char **argv) {
     struct px_args args;
 
-    /* TODO the buffer thing is a temp hack */
-    char msgbuf[1024];
-    memset(msgbuf, 0, sizeof(msgbuf));
-
     /* set default values */
     args.mode = PX_ENCR;
     args.input = stdin;
@@ -439,15 +536,16 @@ int main(int argc, char **argv) {
     args.raw = 0;
     args.key[0] = -1;
 
-    argp_parse(
-            &px_parser,
-            argc,
-            argv,
-            0,
-            0,
-            &args);
+    argp_parse(&px_parser, argc, argv, 0, 0, &args);
 
-    px_cipher(&args);
+    switch (args.mode) {
+        case PX_ENCR:
+        case PX_DECR:
+            px_cipher(&args);
+            break;
+        case PX_STRM:
+            px_stream(&args);
+    }
 
     return 0;
 }
