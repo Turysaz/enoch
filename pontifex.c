@@ -195,7 +195,7 @@ void px_move(char *deck, int oldi, int newi) {
 }
 
 void px_mjokers(char *deck) {
-    int i, j;
+    int i, j = 0;
 
     LOG_DBG("Move jokers.\n");
 
