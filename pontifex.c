@@ -326,6 +326,9 @@ void px_ccut(char *deck, char pwdkey) {
 
     count = pwdkey == 0 ? deck[53] : pwdkey;
 
+    /* Both jokers count as 53 */
+    count = count == 54 ? 53 : count;
+
     LOG_DBG(
         "Count cut:\n"
         "Inserting %i cards to position %i,"
