@@ -440,8 +440,8 @@ void px_cipher(struct px_args *args) {
     /* Read message */
     nmessage = px_rall(args->input, &message);
 
-    /* Create output buffer */
-    output = malloc(nmessage * sizeof(char));
+    /* Create output buffer, add 4 bytes for padding. */
+    output = malloc((nmessage + 4) * sizeof(char));
     if (!output)
     {
         failure = EXIT_INTERNALERR;
@@ -456,6 +456,15 @@ void px_cipher(struct px_args *args) {
         c = px_subst(c, k, args->mode);
         output[o++] = c + 0x40;
     }
+
+    /* padding with X */
+    while(o % 5) {
+        c = 'X' - 0x40;
+        k = px_next(deck);
+        c = px_subst(c, k, args->mode);
+        output[o++] = c + 0x40;
+    }
+
     output[o] = '\0';
 
     /* Output */
