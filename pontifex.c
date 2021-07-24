@@ -73,7 +73,7 @@ static int px_rall(FILE *stream, char **content) {
     *content = malloc(bufsize * sizeof(char));
     if (!(*content)) goto clean;
 
-    while((c = fgetc(stream)) != '\0' && !feof(stream)) {
+    while ((c = fgetc(stream)) != '\0' && !feof(stream)) {
         (*content)[n++] = c;
         if (n == bufsize) {
             *content = realloc(*content, (bufsize *=2) * sizeof(char));
@@ -100,7 +100,7 @@ clean: /* on error */
 static void px_output(const char *buffer, FILE *stream) {
     char c;
     int i = 0;
-    while((c = buffer[i++])) {
+    while ((c = buffer[i++])) {
         fputc(c, stream);
 
         /* Grouping an linebreaks */
@@ -155,7 +155,7 @@ void px_kparse(char *keystr, char *keynum) {
         LOG_DBG("Ignoring whitespace before key...\n");
     }
 
-    for (i = 0; i < 54; i++){
+    for (i = 0; i < 54; i++) {
         numbuf[0] = keystr[i*2];
         numbuf[1] = keystr[i*2+1];
         if (!isdigit(numbuf[0]) || !isdigit(numbuf[1])) {
@@ -284,7 +284,7 @@ void px_tcut(char *deck) {
         if (ja >= 0 && jb >= 0) break;
     }
 
-    if(ja < 0 || jb < 0) {
+    if (ja < 0 || jb < 0) {
         LOG_ERR("Could not locate jokers!\n");
         exit(EXIT_BADARGS);
     }
@@ -363,7 +363,7 @@ char px_next(char *deck) {
         offset = deck[0] <= 53 ? deck[0] : 53;
 
         next = deck[offset];
-        if(next > 52) LOG_DBG("Skipping output: %i\n", next);
+        if (next > 52) LOG_DBG("Skipping output: %i\n", next);
     } while (next > 52);
 
     LOG_DBG(
@@ -381,10 +381,10 @@ void px_genkey(char *password, char *key) {
     char c;
 
     /* initialize key */
-    for(i = 0; i < 54; i++) key[i] = i+1;
+    for (i = 0; i < 54; i++) key[i] = i+1;
 
     i = 0;
-    while((c = password[i++])) {
+    while ((c = password[i++])) {
         if (!isalpha(c)) continue;
         c = toupper(c);
 
@@ -449,7 +449,7 @@ void px_cipher(struct px_args *args) {
     }
 
     /* Cipher execution */
-    while((c = message[i++])) {
+    while ((c = message[i++])) {
         if (!isalpha(c)) continue;
         c = toupper(c) - 0x40;
         k = px_next(deck);
@@ -458,7 +458,7 @@ void px_cipher(struct px_args *args) {
     }
 
     /* padding with X */
-    while(o % 5) {
+    while (o % 5) {
         c = 'X' - 0x40;
         k = px_next(deck);
         c = px_subst(c, k, args->mode);
@@ -565,8 +565,8 @@ static int px_pint(char *number) {
     char c;
     int i = 0;
 
-    while((c = number[i++])) {
-        if(!isdigit(c)) {
+    while ((c = number[i++])) {
+        if (!isdigit(c)) {
             LOG_ERR("%s is not a integer!\n", number)
         }
     }
@@ -628,7 +628,7 @@ static error_t px_popts(
             loglevel++;
             break;
         case ARGP_KEY_END:
-            if (args->key[0] == -1){
+            if (args->key[0] == -1) {
                 argp_error(state, "No key was specified!\n");
             }
             break;
