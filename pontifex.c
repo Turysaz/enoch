@@ -2,9 +2,20 @@
  *  Implementation of Bruce Schneier's Pontifex/Solitaire cryptosystem.
  *  Copyright (C) 2021 Turysaz
  *
- *  This is free software as defined by the Free Software Foundation
- *  and licensed to you under the terms of the General Public License v2
- *  (GPLv2).
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Library General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Library General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Library General Public
+ *  License along with this library; if not, write to the
+ *  Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
+ *  Boston, MA  02110-1301, USA.
  */
 
 #include <stdlib.h>
@@ -22,7 +33,9 @@ static int loglevel = 0;
 
 /* For variadic macros, especially for the '##' symbol, see:
  * https://gcc.gnu.org/onlinedocs/cpp/Variadic-Macros.html
- * */
+ * TODO: Variadic macros are a C99 feature and should be
+ *       replaced by some ANSI-C mechanism.
+ */
 #define LOG(level, format, ...) if (level <= loglevel) printf(format, ##__VA_ARGS__ );
 #define LOG_ERR(format, ...) LOG(LOGLEVEL_ERR, "ERROR: " format, ##__VA_ARGS__ );
 #define LOG_WRN(format, ...) LOG(LOGLEVEL_WRN, "WARNING: " format, ##__VA_ARGS__ );
@@ -37,7 +50,9 @@ static int loglevel = 0;
  * I/O helper functions
  */
 
-/* Opens a file and exits on failure.  */
+/*
+ * Opens a file and exits on failure.
+ */
 static FILE *px_fopen(char *path, char *mode) {
     FILE *f = fopen(path, mode);
     if (!f) {
@@ -47,7 +62,9 @@ static FILE *px_fopen(char *path, char *mode) {
     return f;
 }
 
-/* Returns the number of read chars, including the terminating NUL. */
+/*
+ * Returns the number of read chars, including the terminating NUL.
+ */
 static int px_rall(FILE *stream, char **content) {
     size_t bufsize = 1024,
            n = 0;
@@ -71,13 +88,15 @@ static int px_rall(FILE *stream, char **content) {
 
     return n;
 
-clean: /* ON ERROR */
+clean: /* on error */
     LOG_ERR("Internal memory error!\n");
     if (*content) free(*content);
     exit(EXIT_INTERNALERR);
 }
 
-/* Prints the content of a zero-terminated buffer in groups of 5 */
+/*
+ * Prints the content of a zero-terminated buffer in groups of 5.
+ */
 static void px_output(const char *buffer, FILE *stream) {
     char c;
     int i = 0;
@@ -100,12 +119,13 @@ static void px_output(const char *buffer, FILE *stream) {
  */
 
 /*
- *  Defines the operation modes: encrypt or decrypt.
+ *  Defines the operation modes.
  */
 enum px_mode {
-    PX_ENCR,
-    PX_DECR,
-    PX_STRM
+    PX_ENCR, /* Encrypt message */
+    PX_DECR, /* Decrypt message */
+    PX_STRM, /* Print key stream */
+    PX_PKEY  /* Generate and print key */
 };
 
 /*
@@ -121,6 +141,10 @@ struct px_args {
     int length;
 };
 
+/*
+ * Parses a key written as decimal numbers from the key string
+ * to the byte array keynum.
+ */
 void px_kparse(char *keystr, char *keynum) {
     int i = 0;
     char numbuf[3] = { 0, 0, 0 };
@@ -158,6 +182,10 @@ void px_kparse(char *keystr, char *keynum) {
     return;
 }
 
+/*
+ * Parses a key written as decimal numbers from a file
+ * and saves it in the program args.
+ */
 void px_kread(struct px_args *args, char *filename) {
     FILE *kfile;
     char *buffer;
@@ -179,6 +207,10 @@ clean:
     if (failure) exit(failure);
 }
 
+/*
+ * Move a card in the deck from position oldi to
+ * position newi
+ */
 void px_move(char *deck, int oldi, int newi) {
     char buffer;
     int i;
@@ -194,6 +226,10 @@ void px_move(char *deck, int oldi, int newi) {
     deck[newi] = buffer;
 }
 
+/*
+ * Performs the first solitaire round, which is moving the
+ * joker cards.
+ */
 void px_mjokers(char *deck) {
     int i, j = 0;
 
@@ -227,6 +263,10 @@ void px_mjokers(char *deck) {
     px_move(deck, j, i);
 }
 
+/*
+ * Performs the second pontifex round, which is the
+ * triple cut.
+ */
 void px_tcut(char *deck) {
     int i,
         ja = -1,
@@ -270,19 +310,34 @@ void px_tcut(char *deck) {
     memset(&buffer, 0, sizeof(buffer));
 }
 
-void px_ccut(char *deck) {
+/*
+ * Count-cut operation.
+ * pwdkey:
+ *   For the encryption and encryption, set the pwdkey to 0.
+ *   When generating a key from a password, this needs to be
+ *   set to the current password character.
+ */
+void px_ccut(char *deck, char pwdkey) {
     char buffer[54];
     char count;
 
     memset(buffer, 0, sizeof(buffer));
-    count = deck[53];
-    buffer[53] = count;
+    buffer[53] = deck[53];
+
+    count = pwdkey == 0 ? deck[53] : pwdkey;
 
     LOG_DBG(
         "Count cut:\n"
         "Inserting %i cards to position %i,"
         " moving %i cards from position %i to front.\n",
         count, 53-count, 53-count, count);
+
+    /*
+     * Remember that the array indices start from zero,
+     * but the lowest card value is 1.
+     * Therefore, no additional +/-1 calc is necessary
+     * for the "bottom card stays in place" thing.
+     */
 
     memcpy(buffer + 53 - count, deck, count);
     memcpy(buffer, deck + count, 53 - count);
@@ -293,6 +348,9 @@ void px_ccut(char *deck) {
     memset(&buffer, 0, sizeof(buffer));
 }
 
+/*
+ * Returns the next key stream letter, while modifying the deck.
+ */
 char px_next(char *deck) {
     int offset;
     char next;
@@ -300,7 +358,7 @@ char px_next(char *deck) {
     do {
         px_mjokers(deck);
         px_tcut(deck);
-        px_ccut(deck);
+        px_ccut(deck, 0);
         /* both jokers have the count val of 53. */
         offset = deck[0] <= 53 ? deck[0] : 53;
 
@@ -315,6 +373,33 @@ char px_next(char *deck) {
     return next;
 }
 
+/*
+ * Generates the key based on a password.
+ */
+void px_genkey(char *password, char *key) {
+    int i;
+    char c;
+
+    /* initialize key */
+    for(i = 0; i < 54; i++) key[i] = i+1;
+
+    i = 0;
+    while((c = password[i++])) {
+        if (!isalpha(c)) continue;
+        c = toupper(c);
+
+        px_mjokers(key);
+        px_tcut(key);
+        px_ccut(key, 0);
+        px_ccut(key, c - 0x40);
+    }
+}
+
+/*
+ * Returns the substitute for a single character m with the
+ * key stream letter k with respect to the current mode
+ * (encryption or decryption).
+ */
 char px_subst(char m, char k, enum px_mode mode) {
     char s; /* result */
 
@@ -334,6 +419,11 @@ char px_subst(char m, char k, enum px_mode mode) {
     return s;
 }
 
+/*
+ * Reads a plain text or cipher text message from the input,
+ * performs the encryption or decryption and prints the
+ * result to the output.
+ */
 void px_cipher(struct px_args *args) {
     char deck[54];
     char *message, /* input buffer */
@@ -388,6 +478,10 @@ clean:
     if (failure) exit(failure);
 }
 
+/*
+ * Prints the key stream to the output.
+ * The number of letters is defined within the args.
+ */
 void px_stream(struct px_args *args) {
     int i;
     char deck[54];
@@ -418,6 +512,17 @@ clean:
     if (failure) exit(failure);
 }
 
+/*
+ * Print the current key to output.
+ */
+void px_pkey(struct px_args *args) {
+    int i;
+    for (i = 0; i < 54; i++) {
+        fprintf(args->output, "%02i", args->key[i]);
+    }
+    fputc('\n', args->output);
+}
+
 /* ****************************************************************************
  * ARGP declarations and configuration
  */
@@ -444,7 +549,10 @@ static struct argp_option px_opts[] = {
     { 0 }
 };
 
-static int px_plength(char *number) {
+/*
+ * Parses an (unsigned) integer.
+ */
+static int px_pint(char *number) {
     char c;
     int i = 0;
 
@@ -458,7 +566,7 @@ static int px_plength(char *number) {
 }
 
 /*
- * popts = parse opts
+ * Parse options.
  */
 static error_t px_popts(
         int key,
@@ -478,10 +586,9 @@ static error_t px_popts(
         case 's': /* --stream=N */
             LOG_INF("Stream mode.\n");
             args->mode = PX_STRM;
-            args->length = px_plength(arg);
+            args->length = px_pint(arg);
             break;
         case 'i': /* --input=FILE */
-            /* TODO malicious args possible?*/
             LOG_INF("Reading input from '%s'\n", arg);
             args->input = px_fopen(arg, "r");
             break;
@@ -497,10 +604,13 @@ static error_t px_popts(
             LOG_INF("Using key from '%s'\n", arg);
             px_kread(args, arg);
             break;
-        case 'p': /* --password=PASSWD */
         case   1: /* --gen-key=PASSWD */
-            LOG_ERR("The option is not implemented yet.\n");
-            exit(-99);
+            LOG_INF("Generating key from password");
+            px_genkey(arg, args->key);
+            args->mode = PX_PKEY;
+            break;
+        case 'p': /* --password=PASSWD */
+            px_genkey(arg, args->key);
             break;
         case 'r': /* --raw */
             args->raw = 1;
@@ -508,10 +618,6 @@ static error_t px_popts(
         case 'v': /* --verbose */
             loglevel++;
             break;
-/*
-        case ARGP_KEY_ARG:
-            break;
-*/
         case ARGP_KEY_END:
             if (args->key[0] == -1){
                 argp_error(state, "No key was specified!\n");
@@ -545,6 +651,10 @@ int main(int argc, char **argv) {
             break;
         case PX_STRM:
             px_stream(&args);
+            break;
+        case PX_PKEY:
+            px_pkey(&args);
+            break;
     }
 
     return 0;

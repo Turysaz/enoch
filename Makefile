@@ -1,7 +1,8 @@
 CC = clang
 OBJECTS = pontifex.o
-LIBS = ""
+LIBS =
 CFLAGS = \
+		-g \
 		-Wall \
 		-ansi \
 		-pedantic \
@@ -9,7 +10,7 @@ CFLAGS = \
 		-Wno-variadic-macros \
 		-Wno-gnu-zero-variadic-macro-arguments
 BINDIR = $(DESTDIR)/usr/bin
-NAME = pfex
+NAME = pfx
 
 $(NAME) : $(OBJECTS)
 	$(CC) -o $(NAME) $(OBJECTS) $(LIBS)
