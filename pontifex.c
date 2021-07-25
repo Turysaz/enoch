@@ -406,7 +406,7 @@ char px_next(char *deck) {
  * Generates the key based on a password.
  */
 void px_genkey(char *password, char *key) {
-    int i;
+    int i, n = 0;
     char c;
 
     /* initialize key */
@@ -415,12 +415,19 @@ void px_genkey(char *password, char *key) {
     i = 0;
     while ((c = password[i++])) {
         if (!isalpha(c)) continue;
+        n++;
         c = toupper(c);
 
         px_mjokers(key);
         px_tcut(key);
         px_ccut(key, 0);
         px_ccut(key, c - 0x40);
+    }
+
+    if (n < 64) {
+        LOG_WRN(
+            "Potentially weak password!"
+            " At least 64 characters are recommended.\n");
     }
 }
 
