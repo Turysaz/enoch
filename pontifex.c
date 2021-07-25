@@ -71,24 +71,27 @@ static int px_rall(FILE *stream, char **content) {
     char c;
 
     *content = malloc(bufsize * sizeof(char));
-    if (!(*content)) goto clean;
+    if (!(*content)) goto err;
 
     while ((c = fgetc(stream)) != '\0' && !feof(stream)) {
         (*content)[n++] = c;
         if (n == bufsize) {
             *content = realloc(*content, (bufsize *=2) * sizeof(char));
-            if (!*content) goto clean;
+            if (!*content) goto err;
         }
     }
 
+    /* empty input */
+    if (!n) return 0;
+
     *content = realloc(*content, n * sizeof(char));
-    if (!*content) goto clean;
+    if (!*content) goto err;
 
     (*content)[n] = '\0';
 
     return n;
 
-clean: /* on error */
+err:
     LOG_ERR("Internal memory error!\n");
     if (*content) free(*content);
     exit(EXIT_INTERNALERR);
@@ -205,11 +208,18 @@ void px_kparse(char *keystr, char *keynum) {
 void px_kread(struct px_args *args, char *filename) {
     FILE *kfile;
     char *buffer;
-    int failure = 0;
+    int failure = 0,
+        nread = 0;
 
     kfile = px_fopen(filename, "r");
 
-    px_rall(kfile, &buffer);
+    nread = px_rall(kfile, &buffer);
+    if (!nread) {
+        LOG_ERR("Empty key file!\n");
+        failure = EXIT_BADARGS;
+        goto clean;
+    }
+
     px_kparse(buffer, args->key);
 
     if (fclose(kfile)) {
@@ -445,8 +455,8 @@ char px_subst(char m, char k, enum px_mode mode) {
  */
 void px_cipher(struct px_args *args) {
     char deck[54];
-    char *message, /* input buffer */
-         *output; /* output buffer */
+    char *message = NULL, /* input buffer */
+         *output = NULL; /* output buffer */
     char c, /* character read from buffer */
          k; /* key stream character */
     int i = 0, /* read index */
@@ -458,6 +468,10 @@ void px_cipher(struct px_args *args) {
 
     /* Read message */
     nmessage = px_rall(args->input, &message);
+    if (!nmessage) {
+        LOG_ERR("Empty input, abort.\n");
+        goto clean;
+    }
 
     /* Create output buffer, add 4 bytes for padding. */
     output = malloc((nmessage + 4) * sizeof(char));
