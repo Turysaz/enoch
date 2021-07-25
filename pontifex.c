@@ -23,11 +23,11 @@
 #include <argp.h>
 #include <string.h>
 
-static int loglevel = 0;
 #define LOGLEVEL_ERR 0
 #define LOGLEVEL_WRN 1
 #define LOGLEVEL_INF 2
 #define LOGLEVEL_DBG 3
+static int loglevel = LOGLEVEL_WRN;
 
 #define LOGFILE stdout;
 
@@ -538,11 +538,10 @@ void px_pkey(struct px_args *args) {
 /* ****************************************************************************
  * ARGP declarations and configuration
  */
-const char *argp_program_version = "Pontifex 1.0";
+const char *argp_program_version = "Shaftoe 0.1";
 const char *argp_program_bug_adrress = "<turysaz@posteo.org>";
 static char px_doc[] =
-    "For encrypting and decrypting using"
-    " Bruce Schneier's pontifex algorithm.";
+    "Implementation of Bruce Schneier's solitaire/pontifex cryptosystem.";
 static char px_adoc[] = "";
 
 static struct argp_option px_opts[] = {
@@ -557,7 +556,8 @@ static struct argp_option px_opts[] = {
     { "gen-key",   1,"PASSWD", 0, "Generate and print a passwd-based key."    },
     { "key-file",'f',  "FILE", 0, "Read key from FILE."                       },
     { "raw",     'r',       0, 0, "Skip PONTIFEX MESSAGE frame. (-e only)", 3 },
-    { "verbose", 'v',       0, 0, "Increases verbosity (up to '-vvv')",       },
+    { "verbose", 'v',       0, 0, "Increases verbosity (up to '-vv')"         },
+    { "quiet",   'q',       0, 0, "Reduces all log output except errors"      },
     { 0 }
 };
 
@@ -629,6 +629,9 @@ static error_t px_popts(
             break;
         case 'v': /* --verbose */
             loglevel++;
+            break;
+        case 'q': /* --quiet */
+            loglevel = LOGLEVEL_ERR;
             break;
         case ARGP_KEY_END:
             if (args->key[0] == -1) {
