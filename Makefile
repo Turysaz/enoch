@@ -10,7 +10,7 @@ CFLAGS = \
 		-Wno-variadic-macros \
 		-Wno-gnu-zero-variadic-macro-arguments
 BINDIR = $(DESTDIR)/usr/bin
-NAME = pfx
+NAME = shaftoe
 
 $(NAME) : $(OBJECTS)
 	$(CC) -o $(NAME) $(OBJECTS) $(LIBS)
