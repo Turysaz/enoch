@@ -7,8 +7,8 @@ CFLAGS = \
 		-ansi \
 		-pedantic \
 		-pedantic-errors \
-		-Wno-variadic-macros \
-		-Wno-gnu-zero-variadic-macro-arguments
+		#-Wno-variadic-macros \
+		#-Wno-gnu-zero-variadic-macro-arguments
 BINDIR = $(DESTDIR)/usr/bin
 NAME = shaftoe
 
@@ -22,7 +22,7 @@ install:
 	install -mode=755 $(NAME) $(BINDIR)/
 
 clean:
-	rm *.o $(NAME)
+	rm src/*.o $(NAME)
 	
 uninstall:
 	rm $(BINDIR)/$(NAME)

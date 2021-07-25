@@ -31,16 +31,13 @@ extern int loglevel;
 
 #define LOGFILE stdout;
 
-/* For variadic macros, especially for the '##' symbol, see:
- * https://gcc.gnu.org/onlinedocs/cpp/Variadic-Macros.html
- * TODO: Variadic macros are a C99 feature and should be
- *       replaced by some ANSI-C mechanism.
- */
-#define LOG(level, format, ...) if (level <= loglevel) printf(format, ##__VA_ARGS__ );
-#define LOG_ERR(format, ...) LOG(LOGLEVEL_ERR, "ERROR: " format, ##__VA_ARGS__ );
-#define LOG_WRN(format, ...) LOG(LOGLEVEL_WRN, "WARNING: " format, ##__VA_ARGS__ );
-#define LOG_INF(format, ...) LOG(LOGLEVEL_INF, format, ##__VA_ARGS__ );
-#define LOG_DBG(format, ...) LOG(LOGLEVEL_DBG, format, ##__VA_ARGS__ );
+#define LOG(level, prefix, args) \
+    do { if (level <= loglevel) { printf(prefix) ; printf args; } } while (0)
+
+#define LOG_ERR(format) LOG(LOGLEVEL_ERR, "ERROR: ", format);
+#define LOG_WRN(format) LOG(LOGLEVEL_WRN, "WARNING: ", format);
+#define LOG_INF(format) LOG(LOGLEVEL_INF, "", format);
+#define LOG_DBG(format) LOG(LOGLEVEL_DBG, "", format);
 
 #endif
 

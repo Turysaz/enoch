@@ -77,7 +77,7 @@ static int pint(char *number) {
 
     while ((c = number[i++])) {
         if (!isdigit(c)) {
-            LOG_ERR("%s is not a integer!\n", number)
+            LOG_ERR(("%s is not a integer!\n", number));
         }
     }
 
@@ -95,45 +95,45 @@ static error_t popts(
 
     switch (key) {
         case 'e': /* --encrypt */
-            LOG_INF("Encrypt mode.\n");
+            LOG_INF(("Encrypt mode.\n"));
             args->mode = PX_ENCR;
             break;
         case 'd': /* --decrypt */
-            LOG_INF("Decrypt mode.\n");
+            LOG_INF(("Decrypt mode.\n"));
             args->mode = PX_DECR;
             break;
         case 's': /* --stream=N */
-            LOG_INF("Stream mode.\n");
+            LOG_INF(("Stream mode.\n"));
             args->mode = PX_STRM;
             args->length = pint(arg);
             break;
         case   1: /* --gen-key=PASSWD */
-            LOG_INF("Generating key from password");
+            LOG_INF(("Generating key from password"));
             px_genkey(arg, args->key);
             args->mode = PX_PKEY;
             break;
         case 'i': /* --input=FILE */
-            LOG_INF("Reading input from '%s'\n", arg);
+            LOG_INF(("Reading input from '%s'\n", arg));
             args->input = fopen(arg, "r");
             if (!args->input) {
-                LOG_ERR("Could not open '%s'!\n", arg);
+                LOG_ERR(("Could not open '%s'!\n", arg));
                 exit(EXIT_BADARGS);
             }
             break;
         case 'o': /* --output=FILE */
-            LOG_INF("Writing output to '%s'\n", arg);
+            LOG_INF(("Writing output to '%s'\n", arg));
             args->output = fopen(arg, "w");
             if (!args->output) {
-                LOG_ERR("Could not open '%s'!\n", arg);
+                LOG_ERR(("Could not open '%s'!\n", arg));
                 exit(EXIT_BADARGS);
             }
             break;
         case 'k': /* --key=KEY*/
-            LOG_INF("Using key '%s'\n", arg);
+            LOG_INF(("Using key '%s'\n", arg));
             px_kparse(arg, args->key);
             break;
         case 'f': /* --key-file=FILE */
-            LOG_INF("Using key from '%s'\n", arg);
+            LOG_INF(("Using key from '%s'\n", arg));
             px_kread(args, arg);
             break;
         case 'p': /* --password=PASSWD */
@@ -141,7 +141,7 @@ static error_t popts(
             break;
         case 'j': /* --move-jokers */
             /*TODO: handle argument-order problem first. */
-            LOG_ERR("NOT IMPLEMENTED");
+            LOG_ERR(("NOT IMPLEMENTED"));
             break;
         case 'r': /* --raw */
             args->raw = 1;

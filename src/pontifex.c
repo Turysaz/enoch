@@ -61,7 +61,7 @@ static int px_rall(FILE *stream, char **content) {
     return n;
 
 err:
-    LOG_ERR("Internal memory error!\n");
+    LOG_ERR(("Internal memory error!\n"));
     if (*content) free(*content);
     exit(EXIT_INTERNALERR);
 }
@@ -100,17 +100,17 @@ void px_kparse(char *keystr, char *keynum) {
 
     while ((c = keystr[0]) == ' ' || c == 0x0a || c == 0x0d) {
         keystr += sizeof(char); /* move start of string to right */
-        LOG_DBG("Ignoring whitespace before key...\n");
+        LOG_DBG(("Ignoring whitespace before key...\n"));
     }
 
     for (i = 0; i < 54; i++) {
         numbuf[0] = keystr[i*2];
         numbuf[1] = keystr[i*2+1];
         if (!isdigit(numbuf[0]) || !isdigit(numbuf[1])) {
-            LOG_ERR(
+            LOG_ERR((
                 "Key not numeric or too short! "
                 "Bad symbol at card #%i.\n",
-                i + 1);
+                i + 1));
             exit(EXIT_BADARGS);
         }
 
@@ -118,12 +118,12 @@ void px_kparse(char *keystr, char *keynum) {
 
         /* Validation */
         if (k < 1 || k > 54) {
-            LOG_ERR ("Invalid card number: %i\n", k);
+            LOG_ERR (("Invalid card number: %i\n", k));
             exit(EXIT_BADARGS);
         }
 
         if (used[k-1]++ != 0) {
-            LOG_WRN("The card %i occurs more than once!\n", k);
+            LOG_WRN(("The card %i occurs more than once!\n", k));
         }
 
         keynum[i] = k;
@@ -131,13 +131,13 @@ void px_kparse(char *keystr, char *keynum) {
 
     i = 54 * 2; /* Set one byte past expected key. */
     while ((c = keystr[i++]) == ' ' || c == 0x0a || c == 0x0d) {
-        LOG_DBG("Ignoring whitespace after key...\n");
+        LOG_DBG(("Ignoring whitespace after key...\n"));
     }
 
     if (c != '\0') {
-        LOG_WRN(
+        LOG_WRN((
             "Data after key starting with 0x%2x. Ignoring remainder.\n",
-            c);
+            c));
     }
 
     return;
@@ -155,13 +155,13 @@ void px_kread(struct px_args *args, char *filename) {
 
     kfile = fopen(filename, "r");
     if (!kfile) {
-        LOG_ERR("Could not open '%s'!\n", filename);
+        LOG_ERR(("Could not open '%s'!\n", filename));
         exit(EXIT_BADARGS);
     }
 
     nread = px_rall(kfile, &buffer);
     if (!nread) {
-        LOG_ERR("Empty key file!\n");
+        LOG_ERR(("Empty key file!\n"));
         failure = EXIT_BADARGS;
         goto clean;
     }
@@ -169,7 +169,7 @@ void px_kread(struct px_args *args, char *filename) {
     px_kparse(buffer, args->key);
 
     if (fclose(kfile)) {
-        LOG_ERR("Could not close keyfile.\n");
+        LOG_ERR(("Could not close keyfile.\n"));
         failure = EXIT_INTERNALERR;
         goto clean;
     }
@@ -207,19 +207,19 @@ static void px_move(char *deck, int oldi, int newi) {
 static void px_mjokers(char *deck) {
     int i, j = 0;
 
-    LOG_DBG("Move jokers.\n");
+    LOG_DBG(("Move jokers.\n"));
 
     for (i = 0; i < 54; i++) {
         if (deck[i] == 53) { j = i; break; }
     }
 
     if (j < 0) {
-        LOG_ERR("Could not locate joker A!\n");
+        LOG_ERR(("Could not locate joker A!\n"));
         exit(EXIT_BADARGS);
     }
 
     i = (j % 53) + 1;
-    LOG_DBG("Joker A from %i to %i.\n", j, i);
+    LOG_DBG(("Joker A from %i to %i.\n", j, i));
     px_move(deck, j, i);
 
     for (i = 0; i < 54; i++) {
@@ -227,13 +227,13 @@ static void px_mjokers(char *deck) {
     }
 
     if (j < 0) {
-        LOG_ERR("Could not locate joker B!\n");
+        LOG_ERR(("Could not locate joker B!\n"));
         exit(EXIT_BADARGS);
     }
 
     i = (j % 53) + 1;
     i = (i % 53) + 1;
-    LOG_DBG("Joker B from %i to %i.\n", j, i);
+    LOG_DBG(("Joker B from %i to %i.\n", j, i));
     px_move(deck, j, i);
 }
 
@@ -259,7 +259,7 @@ static void px_tcut(char *deck) {
     }
 
     if (ja < 0 || jb < 0) {
-        LOG_ERR("Could not locate jokers!\n");
+        LOG_ERR(("Could not locate jokers!\n"));
         exit(EXIT_BADARGS);
     }
 
@@ -270,9 +270,9 @@ static void px_tcut(char *deck) {
     lp2 = j2-j1+1;
     lp3 = 53-j2;
 
-    LOG_DBG(
+    LOG_DBG((
         "Triple cut:\nj1: %i, j2: %i\nlengths: %i, %i, %i\n",
-        j1, j2, lp1, lp2, lp3);
+        j1, j2, lp1, lp2, lp3));
 
     memcpy(buffer, deck+j2+1, lp3);
     memcpy(buffer+lp3, deck+j1, lp2);
@@ -303,11 +303,11 @@ static void px_ccut(char *deck, char pwdkey) {
     /* Both jokers count as 53 */
     count = count == 54 ? 53 : count;
 
-    LOG_DBG(
+    LOG_DBG((
         "Count cut:\n"
         "Inserting %i cards to position %i,"
         " moving %i cards from position %i to front.\n",
-        count, 53-count, 53-count, count);
+        count, 53-count, 53-count, count));
 
     /*
      * Remember that the array indices start from zero,
@@ -340,12 +340,12 @@ static char px_next(char *deck) {
         offset = deck[0] <= 53 ? deck[0] : 53;
 
         next = deck[offset];
-        if (next > 52) LOG_DBG("Skipping output: %i\n", next);
+        if (next > 52) LOG_DBG(("Skipping output: %i\n", next));
     } while (next > 52);
 
-    LOG_DBG(
+    LOG_DBG((
         "Output: Top card: %i, taking %i from index %i.\n",
-        deck[0], next, offset);
+        deck[0], next, offset));
 
     return next;
 }
@@ -373,9 +373,9 @@ void px_genkey(char *password, char *key) {
     }
 
     if (n < 64) {
-        LOG_WRN(
+        LOG_WRN((
             "Potentially weak password!"
-            " At least 64 characters are recommended.\n");
+            " At least 64 characters are recommended.\n"));
     }
 }
 
@@ -392,14 +392,14 @@ char px_subst(char m, char k, enum px_mode mode) {
     } else if (mode == PX_DECR) {
         s = (52 + m - k) % 26;
     } else {
-        LOG_ERR("Invalid mode for operation. Abort!\n");
+        LOG_ERR(("Invalid mode for operation. Abort!\n"));
         exit(EXIT_INTERNALERR);
     }
 
     s = s == 0 ? 26 : s;
 
-    LOG_DBG("SUBST: m: %i(%c), k:%i(%c), R: %i(%c)\n",
-            m, m%26+0x40, k, k%26+0x40, s, s%26+0x40);
+    LOG_DBG(("SUBST: m: %i(%c), k:%i(%c), R: %i(%c)\n",
+            m, m%26+0x40, k, k%26+0x40, s, s%26+0x40));
     return s;
 }
 
@@ -424,7 +424,7 @@ void px_cipher(struct px_args *args) {
     /* Read message */
     nmessage = px_rall(args->input, &message);
     if (!nmessage) {
-        LOG_ERR("Empty input, abort.\n");
+        LOG_ERR(("Empty input, abort.\n"));
         goto clean;
     }
 
@@ -490,7 +490,7 @@ void px_stream(struct px_args *args) {
 
     output = malloc((args->length + 1) * sizeof(char));
     if (!output) {
-        LOG_ERR("Internal malloc error!\n");
+        LOG_ERR(("Internal malloc error!\n"));
         failure = EXIT_INTERNALERR;
         goto clean;
     }
