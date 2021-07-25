@@ -146,9 +146,12 @@ struct px_args {
  * to the byte array keynum.
  */
 void px_kparse(char *keystr, char *keynum) {
-    int i = 0;
-    char numbuf[3] = { 0, 0, 0 };
+    int i, k;
+    char numbuf[3] = { 0, 0, 0 }, /* 2-chars string for next card number */
+         used[54]; /* stores which card was used how many times */
     char c;
+
+    memset(used, 0, sizeof(used)); /* reset count field */
 
     while ((c = keystr[0]) == ' ' || c == 0x0a || c == 0x0d) {
         keystr += sizeof(char); /* move start of string to right */
@@ -165,7 +168,20 @@ void px_kparse(char *keystr, char *keynum) {
                 i + 1);
             exit(EXIT_BADARGS);
         }
-        keynum[i] = atoi(numbuf);
+
+        k = atoi(numbuf);
+
+        /* Validation */
+        if (k < 1 || k > 54) {
+            LOG_ERR ("Invalid card number: %i\n", k);
+            exit(EXIT_BADARGS);
+        }
+
+        if (used[k-1]++ != 0) {
+            LOG_WRN("The card %i occurs more than once!\n", k);
+        }
+
+        keynum[i] = k;
     }
 
     i = 54 * 2; /* Set one byte past expected key. */
@@ -655,6 +671,7 @@ int main(int argc, char **argv) {
     args.input = stdin;
     args.output = stdout;
     args.raw = 0;
+    memset(args.key, 0, sizeof(args.key));
     args.key[0] = -1;
 
     argp_parse(&px_parser, argc, argv, 0, 0, &args);
