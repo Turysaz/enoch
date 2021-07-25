@@ -20,47 +20,16 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <argp.h>
 #include <string.h>
+#include <ctype.h>
 
-#define LOGLEVEL_ERR 0
-#define LOGLEVEL_WRN 1
-#define LOGLEVEL_INF 2
-#define LOGLEVEL_DBG 3
-static int loglevel = LOGLEVEL_WRN;
-
-#define LOGFILE stdout;
-
-/* For variadic macros, especially for the '##' symbol, see:
- * https://gcc.gnu.org/onlinedocs/cpp/Variadic-Macros.html
- * TODO: Variadic macros are a C99 feature and should be
- *       replaced by some ANSI-C mechanism.
- */
-#define LOG(level, format, ...) if (level <= loglevel) printf(format, ##__VA_ARGS__ );
-#define LOG_ERR(format, ...) LOG(LOGLEVEL_ERR, "ERROR: " format, ##__VA_ARGS__ );
-#define LOG_WRN(format, ...) LOG(LOGLEVEL_WRN, "WARNING: " format, ##__VA_ARGS__ );
-#define LOG_INF(format, ...) LOG(LOGLEVEL_INF, format, ##__VA_ARGS__ );
-#define LOG_DBG(format, ...) LOG(LOGLEVEL_DBG, format, ##__VA_ARGS__ );
-
-#define EXIT_OKAY       0
-#define EXIT_BADARGS   -1
-#define EXIT_INTERNALERR -10
+#include "./common.h"
+#include "./logging.h"
+#include "./pontifex.h"
 
 /* ****************************************************************************
  * I/O helper functions
  */
-
-/*
- * Opens a file and exits on failure.
- */
-static FILE *px_fopen(char *path, char *mode) {
-    FILE *f = fopen(path, mode);
-    if (!f) {
-        LOG_ERR("Could not open '%s'!\n", path);
-        exit(EXIT_BADARGS);
-    }
-    return f;
-}
 
 /*
  * Returns the number of read chars, including the terminating NUL.
@@ -116,33 +85,6 @@ static void px_output(const char *buffer, FILE *stream) {
 
     fputc('\n', stream);
 }
-
-/* ****************************************************************************
- * Pontifex declarations and definitions
- */
-
-/*
- *  Defines the operation modes.
- */
-enum px_mode {
-    PX_ENCR, /* Encrypt message */
-    PX_DECR, /* Decrypt message */
-    PX_STRM, /* Print key stream */
-    PX_PKEY  /* Generate and print key */
-};
-
-/*
- *  This structs contains the evaluated settings
- *  defined by the CLI options.
- */
-struct px_args {
-    enum px_mode mode;
-    char key[54];
-    FILE *input;
-    FILE *output;
-    char raw;
-    int length;
-};
 
 /*
  * Parses a key written as decimal numbers from the key string
@@ -211,7 +153,11 @@ void px_kread(struct px_args *args, char *filename) {
     int failure = 0,
         nread = 0;
 
-    kfile = px_fopen(filename, "r");
+    kfile = fopen(filename, "r");
+    if (!kfile) {
+        LOG_ERR("Could not open '%s'!\n", filename);
+        exit(EXIT_BADARGS);
+    }
 
     nread = px_rall(kfile, &buffer);
     if (!nread) {
@@ -237,9 +183,11 @@ clean:
  * Move a card in the deck from position oldi to
  * position newi
  */
-void px_move(char *deck, int oldi, int newi) {
+static void px_move(char *deck, int oldi, int newi) {
     char buffer;
     int i;
+
+    if (oldi == newi) return;
 
     buffer = deck[oldi];
 
@@ -256,7 +204,7 @@ void px_move(char *deck, int oldi, int newi) {
  * Performs the first solitaire round, which is moving the
  * joker cards.
  */
-void px_mjokers(char *deck) {
+static void px_mjokers(char *deck) {
     int i, j = 0;
 
     LOG_DBG("Move jokers.\n");
@@ -293,7 +241,7 @@ void px_mjokers(char *deck) {
  * Performs the second pontifex round, which is the
  * triple cut.
  */
-void px_tcut(char *deck) {
+static void px_tcut(char *deck) {
     int i,
         ja = -1,
         jb = -1,
@@ -343,7 +291,7 @@ void px_tcut(char *deck) {
  *   When generating a key from a password, this needs to be
  *   set to the current password character.
  */
-void px_ccut(char *deck, char pwdkey) {
+static void px_ccut(char *deck, char pwdkey) {
     char buffer[54];
     char count;
 
@@ -380,7 +328,7 @@ void px_ccut(char *deck, char pwdkey) {
 /*
  * Returns the next key stream letter, while modifying the deck.
  */
-char px_next(char *deck) {
+static char px_next(char *deck) {
     int offset;
     char next;
 
@@ -570,146 +518,5 @@ void px_pkey(struct px_args *args) {
         fprintf(args->output, "%02i", args->key[i]);
     }
     fputc('\n', args->output);
-}
-
-/* ****************************************************************************
- * ARGP declarations and configuration
- */
-const char *argp_program_version = "Shaftoe 0.1";
-const char *argp_program_bug_adrress = "<turysaz@posteo.org>";
-static char px_doc[] =
-    "Implementation of Bruce Schneier's solitaire/pontifex cryptosystem.";
-static char px_adoc[] = "";
-
-static struct argp_option px_opts[] = {
-    /* name      key      arg flags    doc                              group */
-    { "encrypt", 'e',       0, 0, "Encrypt input. This is the default.",    0 },
-    { "decrypt", 'd',       0, 0, "Decrypt input."                            },
-    { "stream",  's',     "N", 0, "Just print N keystream symbols."           },
-    { "input",   'i',  "FILE", 0, "Read input from FILE instead of stdin.", 1 },
-    { "output",  'o',  "FILE", 0, "Write output to FILE instead of stdout."   },
-    { "key",     'k',   "KEY", 0, "Define symmetric key.",                  2 },
-    { "password",'p',"PASSWD", 0, "Use an alphabetic  passphrase"             },
-    { "gen-key",   1,"PASSWD", 0, "Generate and print a passwd-based key."    },
-    { "key-file",'f',  "FILE", 0, "Read key from FILE."                       },
-    { "raw",     'r',       0, 0, "Skip PONTIFEX MESSAGE frame. (-e only)", 3 },
-    { "verbose", 'v',       0, 0, "Increases verbosity (up to '-vv')"         },
-    { "quiet",   'q',       0, 0, "Reduces all log output except errors"      },
-    { 0 }
-};
-
-/*
- * Parses an (unsigned) integer.
- */
-static int px_pint(char *number) {
-    char c;
-    int i = 0;
-
-    while ((c = number[i++])) {
-        if (!isdigit(c)) {
-            LOG_ERR("%s is not a integer!\n", number)
-        }
-    }
-
-    return atoi(number);
-}
-
-/*
- * Parse options.
- */
-static error_t px_popts(
-        int key,
-        char *arg,
-        struct argp_state *state) {
-    struct px_args *args = state->input;
-
-    switch (key) {
-        case 'e': /* --encrypt */
-            LOG_INF("Encrypt mode.\n");
-            args->mode = PX_ENCR;
-            break;
-        case 'd': /* --decrypt */
-            LOG_INF("Decrypt mode.\n");
-            args->mode = PX_DECR;
-            break;
-        case 's': /* --stream=N */
-            LOG_INF("Stream mode.\n");
-            args->mode = PX_STRM;
-            args->length = px_pint(arg);
-            break;
-        case 'i': /* --input=FILE */
-            LOG_INF("Reading input from '%s'\n", arg);
-            args->input = px_fopen(arg, "r");
-            break;
-        case 'o': /* --output=FILE */
-            LOG_INF("Writing output to '%s'\n", arg);
-            args->output = px_fopen(arg, "w");
-            break;
-        case 'k': /* --key=KEY*/
-            LOG_INF("Using key '%s'\n", arg);
-            px_kparse(arg, args->key);
-            break;
-        case 'f': /* --key-file=FILE */
-            LOG_INF("Using key from '%s'\n", arg);
-            px_kread(args, arg);
-            break;
-        case   1: /* --gen-key=PASSWD */
-            LOG_INF("Generating key from password");
-            px_genkey(arg, args->key);
-            args->mode = PX_PKEY;
-            break;
-        case 'p': /* --password=PASSWD */
-            px_genkey(arg, args->key);
-            break;
-        case 'r': /* --raw */
-            args->raw = 1;
-            break;
-        case 'v': /* --verbose */
-            loglevel++;
-            break;
-        case 'q': /* --quiet */
-            loglevel = LOGLEVEL_ERR;
-            break;
-        case ARGP_KEY_END:
-            if (args->key[0] == -1) {
-                argp_error(state, "No key was specified!\n");
-            }
-            break;
-        default:
-            return ARGP_ERR_UNKNOWN;
-    }
-
-    return 0;
-}
-
-static struct argp px_parser = { px_opts, px_popts, px_adoc, px_doc };
-
-int main(int argc, char **argv) {
-    struct px_args args;
-
-    /* set default values */
-    args.mode = PX_ENCR;
-    args.input = stdin;
-    args.output = stdout;
-    args.raw = 0;
-    memset(args.key, 0, sizeof(args.key));
-    args.key[0] = -1;
-
-    argp_parse(&px_parser, argc, argv, 0, 0, &args);
-
-    switch (args.mode) {
-        case PX_ENCR:
-        case PX_DECR:
-            px_cipher(&args);
-            break;
-        case PX_STRM:
-            px_stream(&args);
-            break;
-        case PX_PKEY:
-            px_pkey(&args);
-            break;
-    }
-
-    return 0;
 }
 

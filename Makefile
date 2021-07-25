@@ -1,5 +1,5 @@
 CC = clang
-OBJECTS = pontifex.o
+OBJECTS = shaftoe.o pontifex.o
 LIBS =
 CFLAGS = \
 		-g \
