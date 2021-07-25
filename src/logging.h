@@ -1,14 +1,14 @@
 #ifndef LOGGING__H_
 #define LOGGING__H_
-
 /*
+ *  logging.h : defines macros for writing log messages.
+ *
  *  Implementation of Bruce Schneier's Pontifex/Solitaire cryptosystem.
  *  Copyright (C) 2021 Turysaz
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
- *  License as published by the Free Software Foundation; either
- *  version 2 of the License, or (at your option) any later version.
+ *  License version 2 as published by the Free Software Foundation.
  *
  *  This library is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -31,13 +31,16 @@ extern int loglevel;
 
 #define LOGFILE stdout;
 
-#define LOG(level, prefix, args) \
+#define LOG_1(level, prefix, args) \
     do { if (level <= loglevel) { printf(prefix) ; printf args; } } while (0)
 
-#define LOG_ERR(format) LOG(LOGLEVEL_ERR, "ERROR: ", format);
-#define LOG_WRN(format) LOG(LOGLEVEL_WRN, "WARNING: ", format);
-#define LOG_INF(format) LOG(LOGLEVEL_INF, "", format);
-#define LOG_DBG(format) LOG(LOGLEVEL_DBG, "", format);
+#define LOG_2(level, args) \
+    do { if (level <= loglevel) printf args; } while (0)
+
+#define LOG_ERR(format) LOG_1(LOGLEVEL_ERR, "ERROR: ", format);
+#define LOG_WRN(format) LOG_1(LOGLEVEL_WRN, "WARNING: ", format);
+#define LOG_INF(format) LOG_2(LOGLEVEL_INF, format);
+#define LOG_DBG(format) LOG_2(LOGLEVEL_DBG, format);
 
 #endif
 

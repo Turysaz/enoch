@@ -1,6 +1,6 @@
 # Shaftoe
 
-Implementation of
+ANSI C implementation of
 [Bruce Schneier's](https://www.schneier.com/academic/solitaire/)
 playing card based *Solitaire* symmetric crypto system, that's
 being used by the characters in Neil Stephenson's novel
@@ -13,6 +13,7 @@ being used by the characters in Neil Stephenson's novel
 * explicit key definition
 * output of password-generated keys
 * key stream output
+* C89 compatible!
 
 ## Example
 
@@ -30,11 +31,9 @@ SOLIT AIREX
 
 ## Dependencies
 
-* GNU Make
-* Clang
 * [GNU argp](https://www.gnu.org/software/libc/manual/html_node/Argp.html)
 
 ## Build
 
-Install clang and run `make`.
+Run `make`.
 

@@ -1,4 +1,4 @@
-CC = clang
+CC = gcc
 OBJECTS = src/shaftoe.o src/pontifex.o
 LIBS =
 CFLAGS = \
