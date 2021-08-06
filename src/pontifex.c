@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include "./common.h"
 #include "./logging.h"
@@ -90,7 +91,7 @@ static void px_output(const char *buffer, FILE *stream) {
  * Parses a key written as decimal numbers from the key string
  * to the byte array keynum.
  */
-void px_kparse(char *keystr, char *keynum) {
+int px_kparse(char *keystr, char *keynum) {
     int i, k;
     char numbuf[3] = { 0, 0, 0 }, /* 2-chars string for next card number */
          used[54]; /* stores which card was used how many times */
@@ -111,7 +112,7 @@ void px_kparse(char *keystr, char *keynum) {
                 "Key not numeric or too short! "
                 "Bad symbol at card #%i.\n",
                 i + 1));
-            exit(EXIT_BADARGS);
+            return EINVAL;
         }
 
         k = atoi(numbuf);
@@ -119,7 +120,7 @@ void px_kparse(char *keystr, char *keynum) {
         /* Validation */
         if (k < 1 || k > 54) {
             LOG_ERR (("Invalid card number: %i\n", k));
-            exit(EXIT_BADARGS);
+            return EINVAL;
         }
 
         if (used[k-1]++ != 0) {
@@ -140,14 +141,14 @@ void px_kparse(char *keystr, char *keynum) {
             c));
     }
 
-    return;
+    return 0;
 }
 
 /*
  * Parses a key written as decimal numbers from a file
  * and saves it in the program args.
  */
-void px_kread(struct px_args *args, char *filename) {
+int px_kread(struct px_opts *args, char *filename) {
     FILE *kfile;
     char *buffer;
     int failure = 0,
@@ -156,27 +157,29 @@ void px_kread(struct px_args *args, char *filename) {
     kfile = fopen(filename, "r");
     if (!kfile) {
         LOG_ERR(("Could not open '%s'!\n", filename));
-        exit(EXIT_BADARGS);
+        return EIO;
     }
 
     nread = px_rall(kfile, &buffer);
     if (!nread) {
         LOG_ERR(("Empty key file!\n"));
-        failure = EXIT_BADARGS;
+        failure = EINVAL;
         goto clean;
     }
 
-    px_kparse(buffer, args->key);
+    /* Note: the failure code may get overridden by the EIO
+     * below. That's not nice, but accepted. */
+    failure = px_kparse(buffer, args->key);
 
     if (fclose(kfile)) {
         LOG_ERR(("Could not close keyfile.\n"));
-        failure = EXIT_INTERNALERR;
+        failure = EIO;
         goto clean;
     }
 
 clean:
     free(buffer);
-    if (failure) exit(failure);
+    return failure;
 }
 
 /*
@@ -408,7 +411,7 @@ char px_subst(char m, char k, enum px_mode mode) {
  * performs the encryption or decryption and prints the
  * result to the output.
  */
-void px_cipher(struct px_args *args) {
+void px_cipher(struct px_opts *args) {
     char deck[54];
     char *message = NULL, /* input buffer */
          *output = NULL; /* output buffer */
@@ -479,7 +482,7 @@ clean:
  * Prints the key stream to the output.
  * The number of letters is defined within the args.
  */
-void px_stream(struct px_args *args) {
+void px_stream(struct px_opts *args) {
     int i;
     char deck[54];
     char c;
@@ -512,11 +515,29 @@ clean:
 /*
  * Print the current key to output.
  */
-void px_pkey(struct px_args *args) {
+void px_pkey(struct px_opts *args) {
     int i;
     for (i = 0; i < 54; i++) {
         fprintf(args->output, "%02i", args->key[i]);
     }
     fputc('\n', args->output);
+}
+
+struct px_opts px_defaultopts(void) {
+    struct px_opts options;
+    int i;
+
+    options.mode = PX_ENCR;
+    options.input = stdin;
+    options.output = stdout;
+    options.raw = 0;
+    options.movjok = 0;
+    options.length = 5;
+
+    for (i = 0; i < sizeof(options.key); i++) {
+        options.key[i] = (char)i;
+    }
+
+    return options;
 }
 

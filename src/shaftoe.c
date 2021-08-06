@@ -42,7 +42,7 @@ static struct argp_option opts[] = {
     { "encrypt", 'e',       0, 0, "Encrypt input. This is the default.",    0 },
     { "decrypt", 'd',       0, 0, "Decrypt input."                            },
     { "stream",  's',     "N", 0, "Just print N keystream symbols."           },
-    { "gen-key",  1 ,"PASSWD", 0, "Generate and print a passwd-based key."    },
+    { "gen-key",  1 ,       0, 0, "Generate and print a passwd-based key."    },
 
     /* I/O definition */
     { "input",   'i',  "FILE", 0, "Read input from FILE instead of stdin.", 1 },
@@ -52,7 +52,7 @@ static struct argp_option opts[] = {
     { "key",     'k',   "KEY", 0, "Define symmetric key.",                  2 },
     { "password",'p',"PASSWD", 0, "Use an alphabetic  passphrase"             },
     { "key-file",'f',  "FILE", 0, "Read key from FILE."                       },
-    { 
+    {
         "move-jokers",
         'j',
         0,
@@ -69,81 +69,216 @@ static struct argp_option opts[] = {
 
 /*
  * Parses an (unsigned) integer.
+ * Return:
+ *      1 on success, 0 on failure
  */
-static int pint(char *number) {
+static int trypint(char *number, int *result) {
     char c;
     int i = 0;
 
     while ((c = number[i++])) {
         if (!isdigit(c)) {
             LOG_ERR(("%s is not a integer!\n", number));
+            return 0;
         }
     }
 
-    return atoi(number);
+    *result = atoi(number);
+    return 1;
+}
+
+struct pargs {
+    char *inputf;
+    char *outputf;
+    char *keyf;
+    char *keystr;
+    char *pw;
+    struct px_opts *options;
+};
+
+static void cleanpargs (struct pargs *arg) {
+    char *c;
+
+    if(!arg) {
+        LOG_ERR(("Internal software error [134b]\n"));
+        exit(EXIT_INTERNALERR);
+    }
+
+    arg->options = NULL;
+    if (arg->pw) {
+        c = arg->pw;
+        while (*c != '\0') *(c++) = '\0';
+        free(arg->pw);
+        arg->pw = NULL;
+    }
+    if (arg->keyf) {
+        c = arg->keyf;
+        while (*c != '\0') *(c++) = '\0';
+        free(arg->keyf);
+        arg->keyf = NULL;
+    }
+    if (arg->keystr) {
+        c = arg->keystr;
+        while (*c != '\0') *(c++) = '\0';
+        free(arg->keystr);
+        arg->keystr = NULL;
+    }
+    if (arg->inputf) {
+        free(arg->inputf);
+        arg->inputf = NULL;
+    }
+    if (arg->outputf) {
+        free(arg->outputf);
+        arg->outputf = NULL;
+    }
+}
+
+static struct pargs initpargs(struct px_opts *options) {
+    struct pargs arguments;
+
+    if(!options) {
+        LOG_ERR(("Internal software error [2eb0]\n"));
+        exit(EXIT_INTERNALERR);
+    }
+
+    /* set default values */
+    arguments.inputf = NULL;
+    arguments.outputf = NULL;
+    arguments.keyf = NULL;
+    arguments.keystr = NULL;
+    arguments.pw = NULL;
+    arguments.options = options;
+
+    return arguments;
+}
+
+static error_t evalpargs(struct pargs *args) {
+    int keydef = 0; /* Track how many options define the key.
+                     * Should be 1. */
+    error_t failure = 0;
+
+    switch (args->options->mode) {
+        case PX_ENCR: LOG_INF(("Encryption mode\n")); break;
+        case PX_DECR: LOG_INF(("Decrytion mode\n")); break;
+        case PX_STRM:
+            LOG_INF((
+                "Stream mode with %i symbols\n",
+                args->options->length));
+            break;
+        case PX_PKEY:
+            LOG_INF(("Print-key mode\n"));
+            break;
+    }
+
+    if (args->options->raw) LOG_INF(("Output in raw mode\n"));
+
+    if (args->pw) {
+        LOG_INF(("Generating key from password.\n"));
+        px_genkey(args->pw, args->options->key);
+        keydef++;
+    }
+    if (args->keystr) {
+        LOG_INF(("Using key '%s'\n", args->keystr));
+        failure = px_kparse(args->keystr, args->options->key);
+        keydef++;
+    }
+    if (args->keyf) {
+        LOG_INF(("Using key file '%s'\n", args->keyf));
+        failure = px_kread(args->options, args->keyf);
+        keydef++;
+    }
+
+    if (failure) return failure; /* assuming the px_ funcs do the logging. */
+
+    if (keydef != 1) {
+        LOG_ERR(("Invalid key definition. Abort.\n"));
+        return ENOTSUP;
+    }
+
+    if(args->inputf) {
+        LOG_INF(("Reading input from '%s'\n", args->inputf));
+        args->options->input = fopen(args->inputf, "r");
+        if (!args->options->input) {
+            LOG_ERR(("Could not open '%s'!\n", args->inputf));
+            return ENOENT;
+        }
+    }
+
+    if(args->outputf) {
+        LOG_INF(("Writing output to '%s'\n", args->outputf));
+        args->options->output = fopen(args->outputf, "w");
+        if (!args->options->output) {
+            LOG_ERR(("Could not open '%s'!\n", args->outputf));
+            return ENOENT;
+        }
+    }
+
+    return 0;
 }
 
 /*
- * Parse options.
+ * Parse arguments.
  */
-static error_t popts(
+static error_t parseargs(
         int key,
         char *arg,
         struct argp_state *state) {
-    struct px_args *args = state->input;
+    struct pargs *args = state->input;
+    size_t length;
 
     switch (key) {
         case 'e': /* --encrypt */
-            LOG_INF(("Encrypt mode.\n"));
-            args->mode = PX_ENCR;
+            args->options->mode = PX_ENCR;
             break;
         case 'd': /* --decrypt */
-            LOG_INF(("Decrypt mode.\n"));
-            args->mode = PX_DECR;
+            args->options->mode = PX_DECR;
             break;
         case 's': /* --stream=N */
-            LOG_INF(("Stream mode.\n"));
-            args->mode = PX_STRM;
-            args->length = pint(arg);
+            args->options->mode = PX_STRM;
+            if (!trypint(arg, &(args->options->length))) return ENOTSUP;
             break;
-        case   1: /* --gen-key=PASSWD */
-            LOG_INF(("Generating key from password"));
-            px_genkey(arg, args->key);
-            args->mode = PX_PKEY;
+        case   1: /* --gen-key */
+            args->options->mode = PX_PKEY;
             break;
+
         case 'i': /* --input=FILE */
-            LOG_INF(("Reading input from '%s'\n", arg));
-            args->input = fopen(arg, "r");
-            if (!args->input) {
-                LOG_ERR(("Could not open '%s'!\n", arg));
-                exit(EXIT_BADARGS);
-            }
+            length = strlen(arg) + 1; /* + '\0' */
+            args->inputf = malloc(length);
+            if (!args->inputf) return ENOMEM;
+            strncpy(args->inputf, arg, length);
             break;
         case 'o': /* --output=FILE */
-            LOG_INF(("Writing output to '%s'\n", arg));
-            args->output = fopen(arg, "w");
-            if (!args->output) {
-                LOG_ERR(("Could not open '%s'!\n", arg));
-                exit(EXIT_BADARGS);
-            }
+            length = strlen(arg) + 1; /* + '\0' */
+            args->outputf = malloc(length);
+            if (!args->outputf) return ENOMEM;
+            strncpy(args->outputf, arg, length);
             break;
         case 'k': /* --key=KEY*/
-            LOG_INF(("Using key '%s'\n", arg));
-            px_kparse(arg, args->key);
+            length = strlen(arg) + 1; /* + '\0' */
+            args->keystr = malloc(length);
+            if (!args->keystr) return ENOMEM;
+            strncpy(args->keystr, arg, length);
             break;
         case 'f': /* --key-file=FILE */
-            LOG_INF(("Using key from '%s'\n", arg));
-            px_kread(args, arg);
+            length = strlen(arg) + 1; /* + '\0' */
+            args->keyf = malloc(length);
+            if (!args->keyf) return ENOMEM;
+            strncpy(args->keyf, arg, length);
             break;
         case 'p': /* --password=PASSWD */
-            px_genkey(arg, args->key);
+            length = strlen(arg) + 1; /* + '\0' */
+            args->pw = malloc(length);
+            if (!args->pw) return ENOMEM;
+            strncpy(args->pw, arg, length);
             break;
+
         case 'j': /* --move-jokers */
-            /*TODO: handle argument-order problem first. */
-            LOG_ERR(("NOT IMPLEMENTED"));
+            LOG_ERR(("NOT IMPLEMENTED\n"));
+            args->options->movjok = 1;
+            return ENOSYS;
             break;
         case 'r': /* --raw */
-            args->raw = 1;
+            args->options->raw = 1;
             break;
         case 'v': /* --verbose */
             loglevel++;
@@ -152,10 +287,7 @@ static error_t popts(
             loglevel = LOGLEVEL_ERR;
             break;
         case ARGP_KEY_END:
-            if (args->key[0] == -1) {
-                argp_error(state, "No key was specified!\n");
-            }
-            break;
+            return evalpargs(args);
         default:
             return ARGP_ERR_UNKNOWN;
     }
@@ -163,31 +295,34 @@ static error_t popts(
     return 0;
 }
 
-static struct argp parser = { opts, popts, adoc, doc };
+static struct argp parser = { opts, parseargs, adoc, doc };
 
 int main(int argc, char **argv) {
-    struct px_args args;
+    struct px_opts options;
+    struct pargs arguments;
+    error_t failure;
 
-    /* set default values */
-    args.mode = PX_ENCR;
-    args.input = stdin;
-    args.output = stdout;
-    args.raw = 0;
-    memset(args.key, 0, sizeof(args.key));
-    args.key[0] = -1;
+    options = px_defaultopts();
+    arguments = initpargs(&options);
 
-    argp_parse(&parser, argc, argv, 0, 0, &args);
+    failure = argp_parse(&parser, argc, argv, 0, 0, &arguments);
+    cleanpargs(&arguments);
 
-    switch (args.mode) {
+    if (failure) {
+        LOG_ERR(("%s\n", strerror(failure)));
+        exit(failure);
+    }
+
+    switch (options.mode) {
         case PX_ENCR:
         case PX_DECR:
-            px_cipher(&args);
+            px_cipher(&options);
             break;
         case PX_STRM:
-            px_stream(&args);
+            px_stream(&options);
             break;
         case PX_PKEY:
-            px_pkey(&args);
+            px_pkey(&options);
             break;
     }
 
