@@ -460,13 +460,13 @@ void px_cipher(struct px_opts *args) {
 
     /* Output */
     if (!args->raw && args->mode == PX_ENCR) {
-        fprintf(args->output, "\n\n----- BEGIN PONTIFEX MESSAGE -----\n\n");
+        fprintf(args->output, "\n\n-----BEGIN PONTIFEX MESSAGE-----\n\n");
     }
 
     px_output(output, args->output);
 
     if (!args->raw && args->mode == PX_ENCR) {
-        fprintf(args->output, "\n-----  END PONTIFEX MESSAGE  -----\n\n");
+        fprintf(args->output, "\n-----END PONTIFEX MESSAGE-----\n\n");
     }
 
     fputc('\n', args->output);
