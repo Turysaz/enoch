@@ -35,7 +35,7 @@ enum px_mode {
  *  This structs contains the evaluated settings
  *  defined by the CLI options.
  */
-struct px_opts {
+struct px_oopts {
     enum px_mode mode;
     char key[54];
     FILE *input;
@@ -48,25 +48,25 @@ struct px_opts {
 /*
  * Gets an options struct initialized to defaults.
  */
-struct px_opts px_defaultopts(void);
+struct px_oopts px_defaultopts(void);
 
 /*
  * Reads a plain text or cipher text message from the input,
  * performs the encryption or decryption and prints the
  * result to the output.
  */
-void px_cipher(struct px_opts *args);
+void px_ocipher(struct px_oopts *args);
 
 /*
  * Prints the key stream to the output.
  * The number of letters is defined within the args.
  */
-void px_stream(struct px_opts *args);
+void px_ostream(struct px_oopts *args);
 
 /*
  * Print the current key to output.
  */
-void px_pkey(struct px_opts *args);
+void px_pkey(struct px_oopts *args);
 
 /*
  * Generates the key based on a password.
@@ -87,6 +87,6 @@ int px_kparse(char *keystr, char *keynum);
  * Return:
  *      0 on success, errno on failure
  */
-int px_kread(struct px_opts *args, char *filename);
+int px_kread(struct px_oopts *args, char *filename);
 
 #endif

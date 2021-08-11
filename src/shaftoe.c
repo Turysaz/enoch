@@ -24,6 +24,7 @@
 #include "./common.h"
 #include "./logging.h"
 #include "./pontifex.h"
+#include "./px_crypto.h"
 
 int loglevel = LOGLEVEL_WRN;
 
@@ -93,7 +94,7 @@ struct pargs {
     char *keyf;
     char *keystr;
     char *pw;
-    struct px_opts *options;
+    struct px_oopts *options;
 };
 
 static void cleanpargs (struct pargs *arg) {
@@ -133,7 +134,7 @@ static void cleanpargs (struct pargs *arg) {
     }
 }
 
-static struct pargs initpargs(struct px_opts *options) {
+static struct pargs initpargs(struct px_oopts *options) {
     struct pargs arguments;
 
     if(!options) {
@@ -174,7 +175,7 @@ static error_t evalpargs(struct pargs *args) {
 
     if (args->pw) {
         LOG_INF(("Generating key from password.\n"));
-        px_genkey(args->pw, args->options->key);
+        px_keygen(args->pw, 0, args->options->key);
         keydef++;
     }
     if (args->keystr) {
@@ -298,7 +299,7 @@ static error_t parseargs(
 static struct argp parser = { opts, parseargs, adoc, doc };
 
 int main(int argc, char **argv) {
-    struct px_opts options;
+    struct px_oopts options;
     struct pargs arguments;
     error_t failure;
 
@@ -316,10 +317,10 @@ int main(int argc, char **argv) {
     switch (options.mode) {
         case PX_ENCR:
         case PX_DECR:
-            px_cipher(&options);
+            px_ocipher(&options);
             break;
         case PX_STRM:
-            px_stream(&options);
+            px_ostream(&options);
             break;
         case PX_PKEY:
             px_pkey(&options);
