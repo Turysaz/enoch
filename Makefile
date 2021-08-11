@@ -1,5 +1,5 @@
 CC = gcc
-OBJECTS = src/shaftoe.o src/pontifex.o
+OBJECTS = src/shaftoe.o src/pontifex.o src/px_crypto.o
 TESTOBJECTS = src/pontifex.o test/pontifex_tests.o \
 				test/tests_main.o
 LIBS =
@@ -29,10 +29,10 @@ install:
 	install -mode=755 $(NAME) $(BINDIR)/
 
 clean:
-	rm $(NAME)
-	rm testrunner
 	rm src/*.o
 	rm test/*.o
+	rm $(NAME)
+	rm testrunner
 	
 uninstall:
 	rm $(BINDIR)/$(NAME)
