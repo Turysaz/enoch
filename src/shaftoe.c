@@ -17,14 +17,16 @@
  *  Boston, MA  02110-1301, USA.
  */
 
+#include <argp.h>
+#include <ctype.h>
+#include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <argp.h>
 
-#include "./common.h"
 #include "./logging.h"
-#include "./pontifex.h"
 #include "./px_crypto.h"
+#include "./px_io.h"
 
 int loglevel = LOGLEVEL_WRN;
 
@@ -69,40 +71,94 @@ static struct argp_option opts[] = {
 };
 
 /*
- * Parses an (unsigned) integer.
- * Return:
- *      1 on success, 0 on failure
+ *  Defines the operation modes.
  */
-static int trypint(char *number, int *result) {
-    char c;
-    int i = 0;
+enum runmode {
+    MD_ENCR, /* Encrypt message */
+    MD_DECR, /* Decrypt message */
+    MD_STRM, /* Print key stream */
+    MD_PKEY  /* Generate and print key */
+};
 
-    while ((c = number[i++])) {
-        if (!isdigit(c)) {
-            LOG_ERR(("%s is not a integer!\n", number));
-            return 0;
-        }
-    }
+/*
+ *  This structs contains the evaluated settings
+ *  defined by the CLI options.
+ */
+struct runopts {
+    enum runmode mode;
+    char key[54];
+    FILE *input;
+    FILE *output;
+    char raw; /* bool flag: raw output */
+    char movjok; /* bool flag: move jokers on key generation */
+    int length; /* output length */
+};
 
-    *result = atoi(number);
-    return 1;
-}
-
-struct pargs {
+/*
+ * This struct collects the unevaluated CLI options, such
+ * as file names.
+ */
+struct cliargs {
     char *inputf;
     char *outputf;
     char *keyf;
     char *keystr;
     char *pw;
-    struct px_oopts *options;
+    struct runopts *options;
 };
 
-static void cleanpargs (struct pargs *arg) {
+/*
+ * Initializes default options.
+ */
+struct runopts _defrunopts(void) {
+    struct runopts options;
+    int i;
+
+    options.mode = MD_ENCR;
+    options.input = stdin;
+    options.output = stdout;
+    options.raw = 0;
+    options.movjok = 0;
+    options.length = 5;
+
+    for (i = 0; i < sizeof(options.key); i++) {
+        options.key[i] = (char)i;
+    }
+
+    return options;
+}
+
+/*
+ *  Initializes a default CLI argument collector.
+ */
+static struct cliargs _defcliargs(struct runopts *options) {
+    struct cliargs arguments;
+
+    if(!options) {
+        LOG_ERR(("Internal software error [2eb0]\n"));
+        exit(ENOTSUP);
+    }
+
+    /* set default values */
+    arguments.inputf = NULL;
+    arguments.outputf = NULL;
+    arguments.keyf = NULL;
+    arguments.keystr = NULL;
+    arguments.pw = NULL;
+    arguments.options = options;
+
+    return arguments;
+}
+
+/*
+ *  Cleans the content of the cliargs argument.
+ */
+static void _clrcliargs (struct cliargs *arg) {
     char *c;
 
     if(!arg) {
         LOG_ERR(("Internal software error [134b]\n"));
-        exit(EXIT_INTERNALERR);
+        exit(ENOTSUP);
     }
 
     arg->options = NULL;
@@ -134,39 +190,194 @@ static void cleanpargs (struct pargs *arg) {
     }
 }
 
-static struct pargs initpargs(struct px_oopts *options) {
-    struct pargs arguments;
+/*
+ * Returns the number of read chars, including the terminating NUL.
+ */
+static int _readall(FILE *stream, char **content) {
+    size_t bufsize = 1024,
+           n = 0;
+    char c;
 
-    if(!options) {
-        LOG_ERR(("Internal software error [2eb0]\n"));
-        exit(EXIT_INTERNALERR);
+    *content = malloc(bufsize * sizeof(char));
+    if (!(*content)) goto err;
+
+    while ((c = fgetc(stream)) != '\0' && !feof(stream)) {
+        (*content)[n++] = c;
+        if (n == bufsize) {
+            *content = realloc(*content, (bufsize *=2) * sizeof(char));
+            if (!*content) goto err;
+        }
     }
 
-    /* set default values */
-    arguments.inputf = NULL;
-    arguments.outputf = NULL;
-    arguments.keyf = NULL;
-    arguments.keystr = NULL;
-    arguments.pw = NULL;
-    arguments.options = options;
+    /* empty input */
+    if (!n) return 0;
 
-    return arguments;
+    *content = realloc(*content, n * sizeof(char));
+    if (!*content) goto err;
+
+    (*content)[n] = '\0';
+
+    return n;
+
+err:
+    LOG_ERR(("Internal memory error!\n"));
+    if (*content) free(*content);
+    exit(ENOMEM);
 }
 
-static error_t evalpargs(struct pargs *args) {
+/*
+ * Prints the content of a zero-terminated buffer in groups of 5.
+ */
+static void _outgrp(const char *buffer, FILE *stream) {
+    char c;
+    int i = 0;
+    while ((c = buffer[i++])) {
+        fputc(c, stream);
+
+        /* Grouping an linebreaks */
+        if (i % 40 == 0 ) {
+            fputc('\n', stream);
+        } else if (i % 5 == 0) {
+            fputc(' ', stream);
+        }
+    }
+
+    fputc('\n', stream);
+}
+
+/*
+ * Parses a key written as decimal numbers from a file
+ * and saves it in the program args.
+ */
+static int _readkey(char *key, char *filename) {
+    FILE *kfile;
+    char *buffer;
+    int failure = 0,
+        nread = 0;
+
+    kfile = fopen(filename, "r");
+    if (!kfile) {
+        LOG_ERR(("Could not open '%s'!\n", filename));
+        return EIO;
+    }
+
+    nread = _readall(kfile, &buffer);
+    if (!nread) {
+        LOG_ERR(("Empty key file!\n"));
+        failure = EINVAL;
+        goto clean;
+    }
+
+    /* Note: the failure code may get overridden by the EIO
+     * below. That's not nice, but accepted. */
+    failure = px_rdkey(buffer, key);
+
+    if (fclose(kfile)) {
+        LOG_ERR(("Could not close keyfile.\n"));
+        failure = EIO;
+        goto clean;
+    }
+
+clean:
+    free(buffer);
+    return failure;
+}
+
+/*
+ * Reads a plain text or cipher text message from the input,
+ * performs the encryption or decryption and prints the
+ * result to the output.
+ * TODO: Replace by lib functions!
+ */
+void _cipher(struct runopts *args) {
+    char *message = NULL, /* input buffer */
+         *output = NULL; /* output buffer */
+    struct px_opts opts = { 1 };
+    int cryptexit = 0;
+    int nmessage = 0;
+    unsigned int flags = 0;
+
+    /* Read message */
+    nmessage = _readall(args->input, &message);
+    if (!nmessage) {
+        LOG_ERR(("Empty input, abort.\n"));
+        goto clean;
+    }
+
+    if (args->mode == MD_ENCR) {
+        cryptexit = px_encrypt(args->key, message, nmessage, &output, &opts);
+        if (cryptexit < 0) {
+            LOG_ERR(("Error in crypto algorithm.\n"));
+            goto clean;
+        }
+
+        if(args->raw) flags |= PXO_RAW;
+        px_prcipher(output, args->output, flags);
+    } else {
+        cryptexit = px_decrypt(args->key, message, nmessage, &output, &opts);
+        if (cryptexit < 0) {
+            LOG_ERR(("Error in crypto algorithm.\n"));
+            goto clean;
+        }
+
+        fprintf(args->output, "%s\n", output);
+    }
+
+clean:
+    if (message) free(message);
+    if (output) free(output);
+}
+
+/*
+ * Prints the key stream to the output.
+ * The number of letters is defined within the args.
+ */
+static void _stream(struct runopts *args) {
+    char *output = NULL;
+    struct px_opts opts = { 1 };
+
+    if (px_stream(args->key, args->length, &output, &opts) != 0) {
+        LOG_ERR(("Key stream generation failed.\n"))
+        return;
+    }
+
+    _outgrp(output, args->output);
+}
+
+/*
+ * Parses an (unsigned) integer.
+ * Return:
+ *      1 on success, 0 on failure
+ */
+static int trypint(char *number, int *result) {
+    char c;
+    int i = 0;
+
+    while ((c = number[i++])) {
+        if (!isdigit(c)) {
+            LOG_ERR(("%s is not a integer!\n", number));
+            return 0;
+        }
+    }
+
+    *result = atoi(number);
+    return 1;
+}
+
+static error_t _evalpargs(struct cliargs *args) {
     int keydef = 0; /* Track how many options define the key.
                      * Should be 1. */
     error_t failure = 0;
 
     switch (args->options->mode) {
-        case PX_ENCR: LOG_INF(("Encryption mode\n")); break;
-        case PX_DECR: LOG_INF(("Decrytion mode\n")); break;
-        case PX_STRM:
+        case MD_ENCR: LOG_INF(("Encryption mode\n")); break;
+        case MD_DECR: LOG_INF(("Decrytion mode\n")); break;
+        case MD_STRM:
             LOG_INF((
                 "Stream mode with %i symbols\n",
                 args->options->length));
             break;
-        case PX_PKEY:
+        case MD_PKEY:
             LOG_INF(("Print-key mode\n"));
             break;
     }
@@ -180,12 +391,12 @@ static error_t evalpargs(struct pargs *args) {
     }
     if (args->keystr) {
         LOG_INF(("Using key '%s'\n", args->keystr));
-        failure = px_kparse(args->keystr, args->options->key);
+        failure = px_rdkey(args->keystr, args->options->key);
         keydef++;
     }
     if (args->keyf) {
         LOG_INF(("Using key file '%s'\n", args->keyf));
-        failure = px_kread(args->options, args->keyf);
+        failure = _readkey(args->options->key, args->keyf);
         keydef++;
     }
 
@@ -224,22 +435,22 @@ static error_t parseargs(
         int key,
         char *arg,
         struct argp_state *state) {
-    struct pargs *args = state->input;
+    struct cliargs *args = state->input;
     size_t length;
 
     switch (key) {
         case 'e': /* --encrypt */
-            args->options->mode = PX_ENCR;
+            args->options->mode = MD_ENCR;
             break;
         case 'd': /* --decrypt */
-            args->options->mode = PX_DECR;
+            args->options->mode = MD_DECR;
             break;
         case 's': /* --stream=N */
-            args->options->mode = PX_STRM;
+            args->options->mode = MD_STRM;
             if (!trypint(arg, &(args->options->length))) return ENOTSUP;
             break;
         case   1: /* --gen-key */
-            args->options->mode = PX_PKEY;
+            args->options->mode = MD_PKEY;
             break;
 
         case 'i': /* --input=FILE */
@@ -288,7 +499,7 @@ static error_t parseargs(
             loglevel = LOGLEVEL_ERR;
             break;
         case ARGP_KEY_END:
-            return evalpargs(args);
+            return _evalpargs(args);
         default:
             return ARGP_ERR_UNKNOWN;
     }
@@ -299,15 +510,15 @@ static error_t parseargs(
 static struct argp parser = { opts, parseargs, adoc, doc };
 
 int main(int argc, char **argv) {
-    struct px_oopts options;
-    struct pargs arguments;
+    struct runopts options;
+    struct cliargs arguments;
     error_t failure;
 
-    options = px_defaultopts();
-    arguments = initpargs(&options);
+    options = _defrunopts();
+    arguments = _defcliargs(&options);
 
     failure = argp_parse(&parser, argc, argv, 0, 0, &arguments);
-    cleanpargs(&arguments);
+    _clrcliargs(&arguments);
 
     if (failure) {
         LOG_ERR(("%s\n", strerror(failure)));
@@ -315,15 +526,15 @@ int main(int argc, char **argv) {
     }
 
     switch (options.mode) {
-        case PX_ENCR:
-        case PX_DECR:
-            px_ocipher(&options);
+        case MD_ENCR:
+        case MD_DECR:
+            _cipher(&options);
             break;
-        case PX_STRM:
-            px_ostream(&options);
+        case MD_STRM:
+            _stream(&options);
             break;
-        case PX_PKEY:
-            px_pkey(&options);
+        case MD_PKEY:
+            px_prkey(options.key, options.output, PXO_RAW);
             break;
     }
 
