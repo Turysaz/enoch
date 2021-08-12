@@ -1,5 +1,5 @@
 CC = gcc
-OBJECTS = src/shaftoe.o src/pontifex.o src/px_crypto.o
+OBJECTS = src/shaftoe.o src/pontifex.o src/px_crypto.o src/px_io.o
 TESTOBJECTS = src/pontifex.o test/pontifex_tests.o \
 				test/tests_main.o
 LIBS =
