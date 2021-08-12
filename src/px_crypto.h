@@ -37,12 +37,13 @@ struct px_opts {
  * Encrypts a message using the pontifex algorithm.
  *
  * \param key   Pointer to the 54-element long key.
- * \param msg   Pointer to the message that shall be encrypted.
- * \param nmsg  The length of msg.
+ * \param msg   Pointer to the 0-terminated  message that shall be encrypted.
+ * \param nmsg  The length of msg (0-terminator NOT included).
  * \param buf   out: The buffer that the ciphertext shall be written to.
  * \param opts  Options for the crypto algorithm.
  *
- * \returns     The length of the generated ciphertext in buf.
+ * \returns     The length of the generated ciphertext in buf,
+ *              0-terminator included.
  */
 int px_encrypt(
     const char *key,
@@ -55,12 +56,13 @@ int px_encrypt(
  * Decrypts a message using the pontifex algorithm.
  *
  * \param key   Pointer to the 54-element long key.
- * \param msg   Pointer to the ciphertext that shall be decrypted.
- * \param nmsg  The length of msg.
+ * \param msg   Pointer to the 0-terminated ciphertext that shall be decrypted.
+ * \param nmsg  The length of msg (0-terminator not included).
  * \param buf   out: The buffer that the plain text shall be written to.
  * \param opts  Options for the crypto algorithm.
  *
  * \returns     The length of the decrypted plaintext in buf.
+ *              0-terminator included.
  */
 int px_decrypt(
     const char *key,
