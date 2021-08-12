@@ -13,27 +13,30 @@ being used by the characters in Neil Stephenson's novel
 * explicit key definition
 * output of password-generated keys
 * key stream output
-* C89 compatible!
+* C89
 
 ## Example
 
 ```bash
 > # encrypt:
-> pfx -p cryptonomicon --raw | tee out.txt
+> shaftoe -p cryptonomicon --raw | tee out.txt
 solitaire
 EOF
 KIRAK SFJAN 
 
 > # decrypt:
-> pfx -d -p cryptonomicon -i out.txt
-SOLIT AIREX
+> shaftoe -d -p cryptonomicon -i out.txt
+SOLITAIREX
 ```
 
 ## Dependencies
 
 * [GNU argp](https://www.gnu.org/software/libc/manual/html_node/Argp.html)
+* [CUnit](http://cunit.sourceforge.net)
 
 ## Build
 
-Run `make`.
+Run `make`. This will build and execute the unit tests as well.
+
+To build shaftoe only, run `make shaftoe`.
 
