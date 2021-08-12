@@ -1,7 +1,6 @@
 CC = gcc
 OBJECTS = src/shaftoe.o  src/px_crypto.o src/px_io.o
-TESTOBJECTS = test/pontifex_tests.o \
-				test/tests_main.o
+TESTOBJECTS = test/px_crypto_tests.o test/tests_main.o src/px_crypto.c
 LIBS =
 TESTLIBS = -lcunit
 CFLAGS = \
