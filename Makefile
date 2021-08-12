@@ -1,7 +1,6 @@
 CC = gcc
-OBJECTS = src/shaftoe.o src/pontifex.o
-TESTOBJECTS = src/pontifex.o test/pontifex_tests.o \
-				test/tests_main.o
+OBJECTS = src/shaftoe.o  src/px_crypto.o src/px_io.o
+TESTOBJECTS = test/px_crypto_tests.o test/tests_main.o src/px_crypto.c
 LIBS =
 TESTLIBS = -lcunit
 CFLAGS = \
@@ -29,10 +28,10 @@ install:
 	install -mode=755 $(NAME) $(BINDIR)/
 
 clean:
-	rm $(NAME)
-	rm testrunner
 	rm src/*.o
 	rm test/*.o
+	rm $(NAME)
+	rm testrunner
 	
 uninstall:
 	rm $(BINDIR)/$(NAME)
