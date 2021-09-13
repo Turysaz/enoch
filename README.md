@@ -1,4 +1,4 @@
-# Shaftoe
+# Enoch
 
 ANSI C implementation of
 [Bruce Schneier's](https://www.schneier.com/academic/solitaire/)
@@ -19,13 +19,13 @@ being used by the characters in Neil Stephenson's novel
 
 ```bash
 > # encrypt:
-> shaftoe -p cryptonomicon --raw | tee out.txt
+> enoch -p cryptonomicon --raw | tee out.txt
 solitaire
 EOF
 KIRAK SFJAN 
 
 > # decrypt:
-> shaftoe -d -p cryptonomicon -i out.txt
+> enoch -d -p cryptonomicon -i out.txt
 SOLITAIREX
 ```
 
@@ -38,5 +38,5 @@ SOLITAIREX
 
 Run `make`. This will build and execute the unit tests as well.
 
-To build shaftoe only, run `make shaftoe`.
+To build enoch only, run `make enoch`.
 

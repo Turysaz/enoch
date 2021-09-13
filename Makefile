@@ -1,5 +1,5 @@
 CC = gcc
-OBJECTS = src/shaftoe.o  src/px_crypto.o src/px_io.o
+OBJECTS = src/enoch.o  src/px_crypto.o src/px_io.o
 TESTOBJECTS = test/px_crypto_tests.o test/tests_main.o src/px_crypto.c
 LIBS =
 TESTLIBS = -lcunit
@@ -12,7 +12,7 @@ CFLAGS = \
 		#-Wno-variadic-macros \
 		#-Wno-gnu-zero-variadic-macro-arguments
 BINDIR = $(DESTDIR)/usr/bin
-NAME = shaftoe
+NAME = enoch
 
 all : $(NAME) $(TESTOBJECTS)
 	$(CC) -o testrunner $(TESTOBJECTS) $(TESTLIBS)
