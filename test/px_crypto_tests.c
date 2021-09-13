@@ -56,7 +56,7 @@ static void encrypt_message_too_long(void) {
         &opts);
 
     CU_ASSERT_STRING_EQUAL(buf, "EXKYI"); /* <- only 5 characters*/
-    CU_ASSERT_EQUAL(result, 5);
+    CU_ASSERT_EQUAL(result, 6); /* 5 + '0' */
 
     if (buf) free(buf);
 }
@@ -65,6 +65,7 @@ static void encrypt_message_too_short(void) {
     struct px_opts opts = { 1 };
     int result;
     char *buf = NULL;
+    char *buf_ref = NULL;
 
     result = px_encrypt(
         key01,
@@ -73,10 +74,19 @@ static void encrypt_message_too_short(void) {
         &buf,
         &opts);
 
-    CU_ASSERT_STRING_EQUAL(buf, "EXKYI"); /* <- only 5 characters */
-    CU_ASSERT_EQUAL(result, 5);
+    /* get reference with padding */
+    px_encrypt(
+        key01,
+        "aaaXX",
+        5,
+        &buf_ref,
+        &opts);
+
+    CU_ASSERT_STRING_EQUAL(buf, buf_ref); /* <- only 5 characters */
+    CU_ASSERT_EQUAL(result, 6);
 
     if (buf) free(buf);
+    if (buf_ref) free(buf_ref);
 }
 
 static void encrypt_tv_by_key(void) {
