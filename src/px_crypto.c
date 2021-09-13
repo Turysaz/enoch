@@ -282,6 +282,12 @@ static int px_cipher(
         (*buf)[o++] = c + 0x40;
     }
 
+    if (i > nmsg + 1) {
+        LOG_WRN(
+            ("The message appears longer than specified."
+            " Parts of the message may remain unencrypted!"));
+    }
+
     /* padding with X */
     while (o % 5) {
         c = 'X' - 0x40;
