@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <assert.h>
 
 #include "./px_crypto.h"
 #include "./logging.h"
@@ -261,7 +262,7 @@ static int px_cipher(
 
     memcpy(deck, key, 54);
 
-    /* 
+    /*
      * Create output buffer, add 4 bytes for 'X' padding and
      * one for a 0-terminator.
      */
@@ -380,6 +381,55 @@ clean:
     return ret;
 }
 
+/**
+ * Relocate the jokers to the positions given by the last two
+ * cards in the deck.
+ * This is an optional step for key generation.
+ */
+static int px_kmovj(char * const key) {
+    int j;
+    char ja_n, jb_n, ja = 0, jb = 0;
+
+    /* Get the last two cards.
+       The +1 offset of the non-zero-based card numbers is
+       okay since the jokers shall go _behind_ the numbers. */
+    ja_n = key[52];
+    jb_n = key[53];
+    if (ja_n > 53) ja_n = 53;
+    if (jb_n > 53) jb_n = 53;
+
+    /* Find the jokers */
+    for (j = 0; j < 54; j++) {
+        if (key[j] == 53) ja = j;
+        if (key[j] == 54) jb = j;
+    }
+
+    assert(ja != 0 && jb != 0 && ja != jb);
+
+    /* px_move() puts the card to a new position _after_ removing
+       it. However, after removing it, the index may have changed.
+       Therefore, the new index has to be adjusted in the cases below.
+       This behavior is _not_ defined by B. Schneier. */
+    if (ja < ja_n) { ja_n--; }
+    if (jb < jb_n) { jb_n--; }
+
+    /* Relocate joker A */
+    px_move(key, ja, ja_n);
+
+    /* Adjust JB's position after moving JA, if necessary */
+    if (ja < jb && ja_n > jb) {
+        /* JA's current position is before JB,
+           its new position is behind it. */
+        jb--;
+    } else if (ja > jb && ja_n < jb) {
+        jb++; /* JA moved before JB */
+    }
+
+    /* Relocate joker B */
+    px_move(key, jb, jb_n);
+
+    return 0;
+}
 
 /**
  * Generates a key for the pontifex key stream algorithm based on a
@@ -391,8 +441,9 @@ int px_keygen(
     const int mvjokers,
     char * const key) {
 
-    int i, n = 0;
-    char c;
+    int i,
+        n = 0; /* counter for characters in password */
+    char c; /* current character */
 
     /* initialize key */
     for (i = 0; i < 54; i++) key[i] = i+1;
@@ -407,6 +458,10 @@ int px_keygen(
         if (!px_tcut(key)) return -1;
         px_ccut(key, 0);
         px_ccut(key, c - 0x40);
+
+        if (mvjokers) {
+            px_kmovj(key);
+        }
     }
 
     if (n < 64) {
@@ -414,7 +469,7 @@ int px_keygen(
             "Potentially weak password!"
             " At least 64 characters are recommended.\n"));
     }
-    
+
     return 0;
 }
 

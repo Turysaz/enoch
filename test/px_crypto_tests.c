@@ -159,6 +159,41 @@ static void decrypt_testvectors_by_pw() {
     }
 }
 
+static void keygen_with_move_jokers() {
+    int result = 0;
+    char key[54];
+
+    const char expected1 [] =
+        { 3, 54,  4, 53,  5,  6,  7,  8,  9, 10, 11, 12,
+         13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+         25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36,
+         37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+         49, 50, 51, 52,  2,  1 };
+    const char expected2 [] =
+        {12, 13, 14, 15, 16, 54, 17, 18, 19, 20, 21, 22,
+         53, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33,
+         34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
+         46, 47, 48, 49, 50, 51, 52,  2,  1,  3,  4,  6,
+          7,  8,  9, 10, 11, 05 };
+    const char expected3 [] =
+        {43, 44, 45, 46, 47, 48, 49, 50, 51, 52,  2,  1,
+          3,  4,  6,  7,  8,  9, 54, 10, 11,  5, 19, 20,
+         21, 22, 23, 12, 13, 14, 15, 16, 17, 24, 25, 26,
+         27, 28, 29, 30, 31, 53, 32, 33, 34, 35, 36, 37,
+         38, 39, 40, 41, 42, 18 };
+
+    result += px_keygen("a", 1, key);
+    CU_ASSERT_NSTRING_EQUAL(key, expected1, 54);
+
+    result += px_keygen("aa", 1, key);
+    CU_ASSERT_NSTRING_EQUAL(key, expected2, 54);
+
+    result += px_keygen("aaa", 1, key);
+    CU_ASSERT_NSTRING_EQUAL(key, expected3, 54);
+
+    CU_ASSERT_EQUAL(result, 0);
+}
+
 
 /* ========================================================= */
 
@@ -200,6 +235,10 @@ int addsuite_px_crypto(void) {
         suite,
         "Decrypt: Schneier's test vectors by password",
         decrypt_testvectors_by_pw);
+    CU_add_test(
+        suite,
+        "Keygen: Move jokers results in expected key",
+        keygen_with_move_jokers);
 
     return 0;
 }

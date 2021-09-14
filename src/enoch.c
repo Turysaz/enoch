@@ -386,7 +386,7 @@ static error_t _evalpargs(struct cliargs *args) {
 
     if (args->pw) {
         LOG_INF(("Generating key from password.\n"));
-        px_keygen(args->pw, 0, args->options->key);
+        px_keygen(args->pw, args->options->movjok, args->options->key);
         keydef++;
     }
     if (args->keystr) {
@@ -485,9 +485,7 @@ static error_t parseargs(
             break;
 
         case 'j': /* --move-jokers */
-            LOG_ERR(("NOT IMPLEMENTED\n"));
             args->options->movjok = 1;
-            return ENOSYS;
             break;
         case 'r': /* --raw */
             args->options->raw = 1;
