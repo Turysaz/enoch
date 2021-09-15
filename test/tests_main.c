@@ -4,6 +4,8 @@
 #include "./px_crypto_tests.h"
 #include "./px_io_tests.h"
 
+int loglevel = -1;
+
 int main(int argc, char **argv) {
    if (CUE_SUCCESS != CU_initialize_registry()) {
        return CU_get_error();

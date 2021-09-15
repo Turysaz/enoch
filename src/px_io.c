@@ -33,7 +33,11 @@
  * Print the cipher text as groups of 5 characters.
  * See header.
  */
-void px_prcipher(const char *ctext, FILE *stream, const unsigned int flags) {
+void px_prcipher(
+    const char * const ctext,
+    FILE *stream,
+    const unsigned int flags) {
+
     int raw = 0; /* bool flag */
     char c;
     int i = 0;
@@ -61,7 +65,7 @@ void px_prcipher(const char *ctext, FILE *stream, const unsigned int flags) {
  * Print a key to a file.
  * See header.
  */
-void px_prkey(const char *key, FILE *stream, const unsigned int flags) {
+void px_prkey(const char * const key, FILE *stream, const unsigned int flags) {
     int i;
 
     for (i = 0; i < 54; i++) {
@@ -75,7 +79,7 @@ void px_prkey(const char *key, FILE *stream, const unsigned int flags) {
  * Read a cipher text message.
  * See header.
  */
-int px_rdcipher(char *ciphert, char **buf) {
+int px_rdcipher(char * const ciphert, char **buf) {
     LOG_ERR(("NOT IMPLEMENTED\n"));
     return -1;
 }
@@ -84,7 +88,7 @@ int px_rdcipher(char *ciphert, char **buf) {
  * Read a key from text.
  * See header.
  */
-int px_rdkey(char *keystr, char *key) {
+int px_rdkey(const char * keystr, char *key) {
     int i, k;
     char numbuf[3] = { 0, 0, 0 }, /* 2-chars string for next card number */
          used[54]; /* stores which card was used how many times */

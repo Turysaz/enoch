@@ -32,7 +32,10 @@
  * \para stream Pointer to the output file.
  * \para flags   Output options.
  */
-void px_prcipher(const char *ctext, FILE *stream, const unsigned int flags);
+void px_prcipher(
+    const char * const ctext,
+    FILE *stream,
+    const unsigned int flags);
 
 /**
  * Print a key to a file.
@@ -41,18 +44,18 @@ void px_prcipher(const char *ctext, FILE *stream, const unsigned int flags);
  * \para stream Pointer to the output file.
  * \para flags   Output options.
  */
-void px_prkey(const char *key, FILE *stream, const unsigned int flags);
+void px_prkey(const char * const key, FILE *stream, const unsigned int flags);
 
 /**
  * Read a cipher text message.
  *
- * \para stream Cipher text
- * \para buf    Pointer to buffer to write the cipher text to.
+ * \para ciphert Cipher text
+ * \para buf     Pointer to buffer to write the cipher text to.
  *
  * \returns The length of the cipher text, 0-terminator included,
  *         if successfull. -1 on failure.
  */
-int px_rdcipher(char *ciphert, char **buf);
+int px_rdcipher(char * const ciphert, char **buf);
 
 /**
  * Read a key from text.
@@ -62,6 +65,6 @@ int px_rdcipher(char *ciphert, char **buf);
  *
  * \returns 0 on success, -1 on failure.
  */
-int px_rdkey(char *keystr, char *key);
+int px_rdkey(const char *keystr, char *key);
 
 #endif
