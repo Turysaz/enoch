@@ -33,6 +33,7 @@ SOLITAIREX
 
 * [GNU argp](https://www.gnu.org/software/libc/manual/html_node/Argp.html)
 * [CUnit](http://cunit.sourceforge.net)
+* [Valgrind](https://valgrind.org)
 
 ## Build
 

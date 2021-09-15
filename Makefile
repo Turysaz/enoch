@@ -14,8 +14,15 @@ CFLAGS = \
 BINDIR = $(DESTDIR)/usr/bin
 NAME = enoch
 
-all : $(NAME) $(TESTOBJECTS)
+all : $(NAME) unittests
+
+valgrind: $(NAME) testrunner
+	bash ./valgrind-tests.sh
+
+testrunner: $(TESTOBJECTS)
 	$(CC) -o testrunner $(TESTOBJECTS) $(TESTLIBS)
+
+unittests: testrunner
 	./testrunner
 
 $(NAME) : $(OBJECTS)

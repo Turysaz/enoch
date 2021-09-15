@@ -99,6 +99,11 @@ int px_rdkey(char *keystr, char *key) {
 
     for (i = 0; i < 54; i++) {
         numbuf[0] = keystr[i*2];
+        if (numbuf[0] == '\0') {
+            LOG_ERR(("Key at least one character too short!\n"));
+            return -1;
+        }
+
         numbuf[1] = keystr[i*2+1];
         if (!isdigit(numbuf[0]) || !isdigit(numbuf[1])) {
             LOG_ERR((

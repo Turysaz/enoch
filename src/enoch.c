@@ -215,7 +215,7 @@ static int _readall(FILE *stream, char **content) {
     *content = realloc(*content, n * sizeof(char));
     if (!*content) goto err;
 
-    (*content)[n] = '\0';
+    (*content)[n-1] = '\0';
 
     return n;
 
@@ -342,6 +342,8 @@ static void _stream(struct runopts *args) {
     }
 
     _outgrp(output, args->output);
+
+    if (output) free(output);
 }
 
 /*
