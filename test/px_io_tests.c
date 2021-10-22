@@ -32,6 +32,7 @@ void read_key_raw(void) {
 void read_key_raw_too_short(void) {
     int result;
     char key[54];
+    /* This key is one byte too short */
     const char *keystr_1 =
         "01020304050607080910"
         "11121314151617181920"
@@ -40,6 +41,7 @@ void read_key_raw_too_short(void) {
         "41424344454647484950"
         "5152535";
 
+   /* This key is two bytes too short */
    const char *keystr_2 =
         "01020304050607080910"
         "11121314151617181920"
@@ -51,6 +53,21 @@ void read_key_raw_too_short(void) {
     result = px_rdkey(keystr_1, key);
     CU_ASSERT_EQUAL(result, -1);
     result = px_rdkey(keystr_2, key);
+    CU_ASSERT_EQUAL(result, -1);
+}
+
+void read_key_with_invalid_characters(void) {
+    int result;
+    char key[54];
+    const char *keystr_1 =
+        "01020304050607080910"
+        "11121314151617181920"
+        "2122232xxxxx27282930"
+        "31323334353637383940"
+        "41424344454647484950"
+        "51525354";
+
+    result = px_rdkey(keystr_1, key);
     CU_ASSERT_EQUAL(result, -1);
 }
 /* ========================================================= */
@@ -81,7 +98,10 @@ int addsuite_px_io(void) {
         suite,
         "Read too short keys from raw string",
         read_key_raw_too_short);
-
+    CU_add_test(
+        suite,
+        "Read key with invalid characters",
+        read_key_with_invalid_characters);
 
     return 0;
 }
