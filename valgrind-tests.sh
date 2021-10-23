@@ -32,6 +32,37 @@ $testrunner ./enoch -q -p cryptonomicon -i <(echo solitaire)
 [ $? -eq "0" ] || fail=1
 
 #====================================================================
+echo_red "Decryption test"
+
+# raw decryption
+$testrunner ./enoch -rdqp cryptonomicon -i <(echo 'KIRAK SFJAN')
+[ $? -eq "0" ] || fail=1
+
+# with frame
+$testrunner ./enoch -dqp cryptonomicon -i <(cat << EOF
+foo
+-----BEGIN PONTIFEX MESSAGE-----
+KIRAK SFJAN
+-----END PONTIFEX MESSAGE-----
+bar
+EOF
+)
+[ $? -eq "0" ] || fail=1
+
+# malformed
+$testrunner ./enoch -dqp cryptonomicon -i <(cat << EOF
+foo
+-----BEGIN PONTIFEX MESSAGE-----
+KIRAK SFJAN
+FOOOOOO
+bar
+EOF
+)
+[ $? -eq "0" ] || fail=1
+
+
+
+#====================================================================
 echo_red "Print key test"
 $testrunner ./enoch -q -p foobar --gen-key
 [ $? -eq "0" ] || fail=1
