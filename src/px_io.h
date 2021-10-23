@@ -49,13 +49,13 @@ void px_prkey(const char * const key, FILE *stream, const unsigned int flags);
 /**
  * Read a cipher text message.
  *
- * \para ciphert Cipher text
- * \para buf     Pointer to buffer to write the cipher text to.
+ * \para ciphert  Cipher text (needs to be 0-terminated!)
+ * \para buf      Pointer to buffer to write the cipher text to.
  *
  * \returns The length of the cipher text, 0-terminator included,
  *         if successfull. -1 on failure.
  */
-int px_rdcipher(char * const ciphert, char **buf);
+int px_rdcipher(const char *ciphert, char **buf);
 
 /**
  * Read a key from text.

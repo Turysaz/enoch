@@ -82,9 +82,34 @@ void px_prkey(const char * const key, FILE *stream, const unsigned int flags) {
  * Read a cipher text message.
  * See header.
  */
-int px_rdcipher(char * const ciphert, char **buf) {
-    LOG_ERR(("NOT IMPLEMENTED\n"));
-    return -1;
+int px_rdcipher(const char *ciphert, char **buf) {
+    char *start, *end;
+    char c;
+    int i = 0;
+
+    *buf = NULL;
+
+    start = strstr(ciphert, beg_msgblk);
+    if (start == NULL) return -1;
+    start += strlen(beg_msgblk);
+    end = strstr(ciphert, end_msgblk);
+    if (end < start) return -1;
+    *buf = malloc(sizeof(char) * (end - start + 1)); /* null term */
+    if (!(*buf)) return -1;
+
+    while (start < end) {
+        c = *start;
+        if (isalpha(c)) {
+            (*buf)[i++] = toupper(c);
+        } else if (!c) {
+            break;
+        }
+        start++;
+    }
+
+    (*buf)[i++] = 0;
+
+    return i;
 }
 
 /**

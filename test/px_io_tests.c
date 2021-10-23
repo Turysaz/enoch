@@ -70,6 +70,122 @@ void read_key_with_invalid_characters(void) {
     result = px_rdkey(keystr_1, key);
     CU_ASSERT_EQUAL(result, -1);
 }
+
+
+
+void read_happy_cipher_message(void) {
+    int result;
+    char *buf;
+
+    const char *message =
+        "-----BEGIN PONTIFEX MESSAGE-----\n"
+        "ABCDE ABCDE ABCDE ABCDE ABCDE ABCDE\n"
+        "ABCDE ABCDE ABCDE ABCDE ABCDE ABCDE\n"
+        "-----END PONTIFEX MESSAGE-----\n";
+    const char *expected =
+        "ABCDEABCDEABCDEABCDEABCDEABCDE"
+        "ABCDEABCDEABCDEABCDEABCDEABCDE";
+
+    result = px_rdcipher(message, &buf);
+
+    CU_ASSERT_EQUAL(result, 61);
+    CU_ASSERT_STRING_EQUAL(buf, expected);
+
+    if(buf) free(buf);
+}
+
+void read_cipher_message_from_noise(void) {
+    int result;
+    char *buf;
+
+    const char *message =
+        "Foo this is part of an email!!"
+        "-----BEGIN PONTIFEX MESSAGE-----\n"
+        "ABCDE ABCDE ABCDE ABCDE ABCDE ABCDE\n"
+        "ABCDE ABCDE ABCDE ABCDE ABCDE ABCDE\n"
+        "XYZAB"
+        "-----END PONTIFEX MESSAGE----- and the\n"
+        "message is in between!\n\n";
+    const char *expected =
+        "ABCDEABCDEABCDEABCDEABCDEABCDE"
+        "ABCDEABCDEABCDEABCDEABCDEABCDE"
+        "XYZAB";
+
+    result = px_rdcipher(message, &buf);
+
+    CU_ASSERT_EQUAL(result, 66);
+    CU_ASSERT_STRING_EQUAL(buf, expected);
+
+    if(buf) free(buf);
+}
+
+void read_cipher_message_missing_start(void) {
+    int result;
+    char *buf;
+
+    const char *message =
+        "This message lacks the start"
+        "ABCDE ABCDE ABCDE ABCDE ABCDE ABCDE\n"
+        "XYZAB"
+        "-----END PONTIFEX MESSAGE-----\n";
+
+    result = px_rdcipher(message, &buf);
+    CU_ASSERT_EQUAL(result, -1);
+
+    if (buf) free(buf);
+}
+
+void read_cipher_message_missing_end(void) {
+    int result;
+    char *buf;
+
+    const char *message =
+        "This message lacks the end"
+        "-----BEGIN PONTIFEX MESSAGE-----\n"
+        "ABCDE ABCDE ABCDE ABCDE ABCDE ABCDE\n"
+        "XYZAB";
+
+    result = px_rdcipher(message, &buf);
+    CU_ASSERT_EQUAL(result, -1);
+
+    if(buf) free(buf);
+}
+
+void read_cipher_message_wrong_order(void) {
+    int result;
+    char *buf;
+
+    const char *message =
+        "This message lacks the end"
+        "-----END PONTIFEX MESSAGE-----\n"
+        "ABCDE ABCDE ABCDE ABCDE ABCDE ABCDE\n"
+        "XYZAB"
+        "-----BEGIN PONTIFEX MESSAGE-----\n"
+        "foo";
+
+    result = px_rdcipher(message, &buf);
+    CU_ASSERT_EQUAL(result, -1);
+
+    if(buf) free(buf);
+}
+
+void read_empty_cipher_message(void) {
+    int result;
+    char *buf;
+
+    const char *message =
+        "This message lacks content :)"
+        "-----BEGIN PONTIFEX MESSAGE-----\n"
+        "-----END PONTIFEX MESSAGE-----\n"
+        "only noise around it.";
+
+    result = px_rdcipher(message, &buf);
+    CU_ASSERT_EQUAL(result, 1);
+    CU_ASSERT_EQUAL(strlen(buf), 0);
+
+    if(buf) free(buf);
+}
+
 /* ========================================================= */
 
 static int initsuite_px_io(void) {
@@ -103,7 +219,31 @@ int addsuite_px_io(void) {
         "Read key with invalid characters",
         read_key_with_invalid_characters);
 
+    CU_add_test(
+        suite,
+        "Read happy cipher message",
+        read_happy_cipher_message);
+    CU_add_test(
+        suite,
+        "Read cipher message from noise",
+        read_cipher_message_from_noise);
+    CU_add_test(
+        suite,
+        "Read cipher with missing start",
+        read_cipher_message_missing_start);
+    CU_add_test(
+        suite,
+        "Read cipher message with missing end",
+        read_cipher_message_missing_end);
+    CU_add_test(
+        suite,
+        "Read cipher message with end before start",
+        read_cipher_message_wrong_order);
+    CU_add_test(
+        suite,
+        "Read empty cipher message",
+        read_empty_cipher_message);
+
     return 0;
 }
-
 
