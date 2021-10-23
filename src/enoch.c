@@ -128,6 +128,11 @@ struct runopts _defrunopts(void) {
     return options;
 }
 
+static void _clrrunopts (struct runopts *opts) {
+    if(opts->input != stdin) fclose(opts->input);
+    if(opts->output != stdout) fclose(opts->output);
+}
+
 /*
  *  Initializes a default CLI argument collector.
  */
@@ -537,6 +542,8 @@ int main(int argc, char **argv) {
             px_prkey(options.key, options.output, PXO_RAW);
             break;
     }
+
+    _clrrunopts(&options);
 
     return 0;
 }
