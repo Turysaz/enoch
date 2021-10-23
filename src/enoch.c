@@ -64,7 +64,7 @@ static struct argp_option opts[] = {
     },
 
     /* behavior */
-    { "raw",     'r',       0, 0, "Skip PONTIFEX MESSAGE frame. (-e only)", 3 },
+    { "raw",     'r',       0, 0, "Skip PONTIFEX MESSAGE frame. (-e / -d)", 3 },
     { "verbose", 'v',       0, 0, "Increases verbosity (up to '-vv')"         },
     { "quiet",   'q',       0, 0, "Reduces all log output except errors"      },
     { 0 }
@@ -295,7 +295,8 @@ clean:
  * TODO: Replace by lib functions!
  */
 void _cipher(struct runopts *args) {
-    char *message = NULL, /* input buffer */
+    char *filebuf = NULL, /* buffer for raw file content*/
+         *message = NULL, /* input buffer */
          *output = NULL; /* output buffer */
     struct px_opts opts = { 1 };
     int cryptexit = 0;
@@ -303,7 +304,11 @@ void _cipher(struct runopts *args) {
     unsigned int flags = 0;
 
     /* Read message */
-    nmessage = _readall(args->input, &message);
+    nmessage = _readall(args->input, &filebuf);
+
+    /* Set the message to raw content by default. Important for freeing. */
+    message = filebuf;
+
     if (!nmessage) {
         LOG_ERR(("Empty input, abort.\n"));
         goto clean;
@@ -319,6 +324,15 @@ void _cipher(struct runopts *args) {
         if(args->raw) flags |= PXO_RAW;
         px_prcipher(output, args->output, flags);
     } else {
+        if (!args->raw) {
+            nmessage = px_rdcipher(filebuf, &message);
+            free(filebuf); /* The raw content is no longer needed. */
+            if (nmessage == -1) {
+                LOG_ERR(("The message was malformed.\n"))
+                goto clean;
+            }
+        }
+
         cryptexit = px_decrypt(args->key, message, nmessage, &output, &opts);
         if (cryptexit < 0) {
             LOG_ERR(("Error in crypto algorithm.\n"));
