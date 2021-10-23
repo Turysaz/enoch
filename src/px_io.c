@@ -25,6 +25,9 @@
 #include "./px_io.h"
 #include "./logging.h"
 
+static const char beg_msgblk[] = "-----BEGIN PONTIFEX MESSAGE-----";
+static const char end_msgblk[] = "-----END PONTIFEX MESSAGE-----";
+
 /*
  * =============  Header API implementation ================
  */
@@ -43,7 +46,7 @@ void px_prcipher(
     int i = 0;
 
     raw = (flags & PXO_RAW);
-    if (!raw) fprintf(stream, "\n\n-----BEGIN PONTIFEX MESSAGE-----\n\n");
+    if (!raw) fprintf(stream, "\n\n%s\n\n", beg_msgblk);
 
     while ((c = ctext[i++])) {
         fputc(c, stream);
@@ -58,7 +61,7 @@ void px_prcipher(
 
     if (i % 40 != 1) fputc('\n', stream);
 
-    if (!raw) fprintf(stream, "\n-----END PONTIFEX MESSAGE-----\n\n");
+    if (!raw) fprintf(stream, "\n%s\n\n", end_msgblk);
 }
 
 /**
