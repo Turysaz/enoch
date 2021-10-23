@@ -15,14 +15,18 @@ being used by the characters in Neil Stephenson's novel
 * key stream output
 * C89
 
+*("Key" means the card deck order)*
+
 ## Example
 
 ```bash
 > # encrypt:
-> enoch -p cryptonomicon --raw | tee out.txt
+> enoch -p cryptonomicon | tee out.txt
 solitaire
-EOF
+^D
+-----BEGIN PONTIFEX MESSAGE-----
 KIRAK SFJAN 
+-----END PONTIFEX MESSAGE-----
 
 > # decrypt:
 > enoch -d -p cryptonomicon -i out.txt
@@ -31,13 +35,15 @@ SOLITAIREX
 
 ## Dependencies
 
-* [GNU argp](https://www.gnu.org/software/libc/manual/html_node/Argp.html)
-* [CUnit](http://cunit.sourceforge.net)
-* [Valgrind](https://valgrind.org)
+* For enoch itself:
+    * [GNU argp](https://www.gnu.org/software/libc/manual/html_node/Argp.html)
+* For testing:
+    * [CUnit](http://cunit.sourceforge.net)
+    * [Valgrind](https://valgrind.org)
 
 ## Build
 
 Run `make`. This will build and execute the unit tests as well.
-
+To execute the Valgrind tests as well, run `make valgrind`
 To build enoch only, run `make enoch`.
 
