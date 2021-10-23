@@ -1,6 +1,9 @@
 #ifndef PX_IO__H_
 #define PX_IO__H_
 /*
+ *  px_io.h : Definition of the I/O functions like parsing keys
+ *            or messages from files, or writing ciphertext to files.
+ *
  *  Implementation of Bruce Schneier's Pontifex/Solitaire cryptosystem.
  *  Copyright (C) 2021 Turysaz
  *

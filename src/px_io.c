@@ -1,4 +1,7 @@
 /*
+ *  px_io.c : Implementation of the I/O functions like parsing keys
+ *            or messages from files, or writing ciphertext to files.
+ *
  *  Implementation of Bruce Schneier's Pontifex/Solitaire cryptosystem.
  *  Copyright (C) 2021 Turysaz
  *

@@ -1,4 +1,7 @@
 /*
+ *  enoch.c : This is the main entry for the program, containing the
+ *            main() function.
+ *
  *  Implementation of Bruce Schneier's Pontifex/Solitaire cryptosystem.
  *  Copyright (C) 2021 Turysaz
  *

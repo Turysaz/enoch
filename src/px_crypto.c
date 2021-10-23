@@ -1,4 +1,7 @@
 /*
+ *  px_crypto.c : Contains the implementation of the cryptography
+ *                algorithms.
+ *
  *  Implementation of Bruce Schneier's Pontifex/Solitaire cryptosystem.
  *  Copyright (C) 2021 Turysaz
  *
