@@ -36,7 +36,7 @@ int loglevel = LOGLEVEL_WRN;
 /* ****************************************************************************
  * ARGP declarations and configuration
  */
-const char *argp_program_version = "0.1";
+const char *argp_program_version = "1.0";
 const char *argp_program_bug_adrress = "<turysaz@posteo.org>";
 static char doc[] =
     "Implementation of Bruce Schneier's solitaire/pontifex cryptosystem.";
