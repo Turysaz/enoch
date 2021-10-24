@@ -131,7 +131,10 @@ struct runopts _defrunopts(void) {
     return options;
 }
 
-static void _clrrunopts (struct runopts *opts) {
+/*
+ * Cleans and frees the content of a runopts struct.
+ */
+static void _clrrunopts(struct runopts *opts) {
     if(opts->input != stdin) fclose(opts->input);
     if(opts->output != stdout) fclose(opts->output);
 }
@@ -159,7 +162,7 @@ static struct cliargs _defcliargs(struct runopts *options) {
 }
 
 /*
- *  Cleans the content of the cliargs argument.
+ *  Cleans and frees the content of a cliargs struct.
  */
 static void _clrcliargs (struct cliargs *arg) {
     char *c;
@@ -295,7 +298,6 @@ clean:
  * Reads a plain text or cipher text message from the input,
  * performs the encryption or decryption and prints the
  * result to the output.
- * TODO: Replace by lib functions!
  */
 void _cipher(struct runopts *args) {
     char *filebuf = NULL, /* buffer for raw file content*/

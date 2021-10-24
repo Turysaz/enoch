@@ -233,7 +233,17 @@ static char px_subst(char m, char k, const int decrypt) {
 }
 
 /*
- * TODO
+ * Performs the pontifex cipher algorithm, both for
+ * encrypting and decrypting.
+ *
+ * \param   key     Pointer to 54-byte card deck.
+ * \param   msg     Pointer to message to work cipher on.
+ * \param   nmsg    Length of message.
+ * \param   buf     out: Pointer to the result.
+ * \param   px_opts Pointer to the options struct.
+ * \param   decrypt Encrypt if 1, decrypt if 0.
+ *
+ * \returns Length of result including 0-terminator.
  */
 static int px_cipher(
     const char *key,
