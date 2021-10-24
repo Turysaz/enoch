@@ -71,7 +71,7 @@ void px_prcipher(
  * Print a key to a file.
  * See header.
  */
-void px_prkey(const char * const key, FILE *stream, const unsigned int flags) {
+void px_prkey(const card * const key, FILE *stream, const unsigned int flags) {
     int i;
 
     for (i = 0; i < 54; i++) {
@@ -119,7 +119,7 @@ int px_rdcipher(const char *ciphert, char **buf) {
  * Read a key from text.
  * See header.
  */
-int px_rdkey(const char * keystr, char *key) {
+int px_rdkey(const char * keystr, card *key) {
     int i, k;
     char numbuf[3] = { 0, 0, 0 }, /* 2-chars string for next card number */
          used[54]; /* stores which card was used how many times */

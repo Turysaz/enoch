@@ -28,6 +28,7 @@
 #include <string.h>
 
 #include "./logging.h"
+#include "./px_common.h"
 #include "./px_crypto.h"
 #include "./px_io.h"
 
@@ -89,7 +90,7 @@ enum runmode {
  */
 struct runopts {
     enum runmode mode;
-    char key[54];
+    card key[54];
     FILE *input;
     FILE *output;
     char raw; /* bool flag: raw output */
@@ -260,7 +261,7 @@ static void _outgrp(const char *buffer, FILE *stream) {
  * Parses a key written as decimal numbers from a file
  * and saves it in the program args.
  */
-static int _readkey(char *key, char *filename) {
+static int _readkey(card *key, char *filename) {
     FILE *kfile;
     char *buffer;
     int failure = 0,

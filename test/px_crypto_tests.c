@@ -20,11 +20,12 @@
 #include <stdlib.h>
 #include <CUnit/CUnit.h>
 #include "./px_crypto_tests.h"
+#include "../src/px_common.h"
 #include "../src/px_crypto.h"
 
 extern int loglevel;
 
-const char key01 [] =
+const card key01 [] =
     { 1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12,
      13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
      25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36,
@@ -130,7 +131,7 @@ static void encrypt_testvectors_by_pw() {
     const struct px_opts opts = { 1 };
     int res_keygen = -1,
         res_encr = -1;
-    char key[54];
+    card key[54];
     char *buf = NULL;
     struct s_tvxx *s;
 
@@ -156,7 +157,7 @@ static void decrypt_testvectors_by_pw() {
     const struct px_opts opts = { 1 };
     int res_keygen = -1,
         res_encr = -1;
-    char key[54];
+    card key[54];
     char *buf = NULL;
     struct s_tvxx *s;
 
@@ -179,21 +180,21 @@ static void decrypt_testvectors_by_pw() {
 
 static void keygen_with_move_jokers() {
     int result = 0;
-    char key[54];
+    card key[54];
 
-    const char expected1 [] =
+    const card expected1 [] =
         { 3, 54,  4, 53,  5,  6,  7,  8,  9, 10, 11, 12,
          13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
          25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36,
          37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
          49, 50, 51, 52,  2,  1 };
-    const char expected2 [] =
+    const card expected2 [] =
         {12, 13, 14, 15, 16, 54, 17, 18, 19, 20, 21, 22,
          53, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33,
          34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
          46, 47, 48, 49, 50, 51, 52,  2,  1,  3,  4,  6,
           7,  8,  9, 10, 11, 05 };
-    const char expected3 [] =
+    const card expected3 [] =
         {43, 44, 45, 46, 47, 48, 49, 50, 51, 52,  2,  1,
           3,  4,  6,  7,  8,  9, 54, 10, 11,  5, 19, 20,
          21, 22, 23, 12, 13, 14, 15, 16, 17, 24, 25, 26,

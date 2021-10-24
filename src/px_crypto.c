@@ -29,12 +29,14 @@
 #include "./px_crypto.h"
 #include "./logging.h"
 
+#define INVALID_CARD (card)254
+
 /*
  * Move a card in the deck from position oldi to
  * position newi
  */
-static void px_move(char *deck, int oldi, int newi) {
-    char buffer;
+static void px_move(card *deck, int oldi, int newi) {
+    card buffer;
     int i;
 
     if (oldi == newi) return;
@@ -55,11 +57,12 @@ static void px_move(char *deck, int oldi, int newi) {
  * joker cards.
  * Returns 0 on failure, 1 on success.
  */
-static int px_mjokers(char *deck) {
-    int i, j = 0;
+static int px_mjokers(card *deck) {
+    int i, j;
 
     LOG_DBG(("Move jokers.\n"));
 
+    j = -1;
     for (i = 0; i < 54; i++) {
         if (deck[i] == 53) { j = i; break; }
     }
@@ -73,6 +76,7 @@ static int px_mjokers(char *deck) {
     LOG_DBG(("Joker A from %i to %i.\n", j, i));
     px_move(deck, j, i);
 
+    j = -1;
     for (i = 0; i < 54; i++) {
         if (deck[i] == 54) { j = i; break; }
     }
@@ -94,13 +98,13 @@ static int px_mjokers(char *deck) {
  * Performs the second pontifex round, which is the
  * triple cut.
  */
-static int px_tcut(char *deck) {
+static int px_tcut(card *deck) {
     int i,
         ja = -1,
         jb = -1,
         j1 = -1,
         j2 = -1;
-    char buffer[54];
+    card buffer[54];
     int lp1, lp2, lp3; /* lengths of parts 1-3 */
     int ret = 0;
 
@@ -148,8 +152,8 @@ clean:
  *   When generating a key from a password, this needs to be
  *   set to the current password character.
  */
-static void px_ccut(char *deck, char pwdkey) {
-    char buffer[54];
+static void px_ccut(card *deck, char pwdkey) {
+    card buffer[54];
     char count;
 
     memset(buffer, 0, sizeof(buffer));
@@ -183,16 +187,22 @@ static void px_ccut(char *deck, char pwdkey) {
 }
 
 /*
- * Returns the next key stream letter, while modifying the deck.
+ * Returns the next key stream card, while modifying the deck.
+ * The returned letter is a number from 1 to 52, not an ASCII char!
+ *
+ * Note that this will never yield a joker card!
+ *
+ * \param deck  Pointer to the deck, containing numbers 1-54.
+ *
+ * \returns values 1-52 normally, INVALID_CARD on error.
  */
-static char px_next(char *deck) {
+static card px_next(card *deck) {
     int offset;
-    char next;
+    card next;
 
-    /*TODO adjust return value on error */
     do {
-        if (!px_mjokers(deck)) return 100;
-        if (!px_tcut(deck)) return 100;
+        if (!px_mjokers(deck)) return INVALID_CARD;
+        if (!px_tcut(deck)) return INVALID_CARD;
         px_ccut(deck, 0);
         /* both jokers have the count val of 53. */
         offset = deck[0] <= 53 ? deck[0] : 53;
@@ -216,7 +226,7 @@ static char px_next(char *deck) {
  * key stream letter k with respect to the current mode
  * (encryption = 0 or decryption = 1).
  */
-static char px_subst(char m, char k, const int decrypt) {
+static card px_subst(card m, card k, const int decrypt) {
     char s; /* result */
 
     if (decrypt) {
@@ -228,7 +238,9 @@ static char px_subst(char m, char k, const int decrypt) {
     s = s == 0 ? 26 : s; /* Fake modulo... */
 
     LOG_DBG(("SUBST: m: %i(%c), k:%i(%c), R: %i(%c)\n",
-            m, m%26+0x40, k, k%26+0x40, s, s%26+0x40));
+            m, CARD2ASCII(m),
+            k, CARD2ASCII(k),
+            s, CARD2ASCII(s)));
     return s;
 }
 
@@ -246,16 +258,16 @@ static char px_subst(char m, char k, const int decrypt) {
  * \returns Length of result including 0-terminator.
  */
 static int px_cipher(
-    const char *key,
+    const card *key,
     const char *msg,
     const int nmsg,
     char **buf,
     const struct px_opts *opts,
     const int decrypt) {
 
-    char deck[54]; /* copy of the key */
-    char c, /* character read from buffer */
-         k; /* key stream character */
+    card deck[54]; /* copy of the key */
+    card k; /* key stream character */
+    char c; /* character read from buffer */
     int i = 0, /* read index */
         o = 0; /* write index */
     int ret = -1;
@@ -290,10 +302,14 @@ static int px_cipher(
     /* Cipher execution */
     while ((c = msg[i++]) && i <= nmsg) {
         if (!isalpha(c)) continue;
-        c = toupper(c) - 0x40;
-        k = px_next(deck);
+        c = ASCII2CARD(c);
+        if((k = px_next(deck)) == INVALID_CARD) {
+            ret = -3;
+            LOG_ERR(("Error on getting next key stream letter [20ba].\n"));
+            goto clean;
+        }
         c = px_subst(c, k, decrypt);
-        (*buf)[o++] = c + 0x40;
+        (*buf)[o++] = CARD2ASCII(c);
     }
 
     if (i > nmsg + 1) {
@@ -304,10 +320,15 @@ static int px_cipher(
 
     /* padding with X */
     while (o % 5) {
-        c = 'X' - 0x40;
-        k = px_next(deck);
+        c = ASCII2CARD('X');
+        if((k = px_next(deck)) == INVALID_CARD) {
+            ret = -4;
+            LOG_ERR(("Error on getting next key stream letter. [5138]\n"));
+            goto clean;
+        }
+
         c = px_subst(c, k, decrypt);
-        (*buf)[o++] = c + 0x40;
+        (*buf)[o++] = CARD2ASCII(c);
     }
 
     (*buf)[o++] = '\0';
@@ -327,7 +348,7 @@ clean:
  * See header.
  */
 int px_encrypt(
-    const char *key,
+    const card *key,
     const char *msg,
     const int nmsg,
     char **buf,
@@ -341,7 +362,7 @@ int px_encrypt(
  * See header.
  */
 int px_decrypt(
-    const char *key,
+    const card *key,
     const char *msg,
     const int nmsg,
     char **buf,
@@ -355,15 +376,15 @@ int px_decrypt(
  * See header.
  */
 int px_stream(
-    const char *key,
+    const card *key,
     const int count,
     char **buf,
     const struct px_opts *opts) {
 
     int i;
     int ret = 0;
-    char deck[54];
-    char c;
+    card deck[54];
+    card c;
 
     /* Input validation */
     if (key == NULL || buf == NULL || opts == NULL) {
@@ -382,9 +403,13 @@ int px_stream(
     }
 
     for (i = 0; i < count; i++) {
-        c = px_next(deck);
-        c = c > 26 ? c - 26 : c;
-        (*buf)[i] = c + 0x40;
+        if((c = px_next(deck)) == INVALID_CARD) {
+            ret = -2;
+            LOG_ERR(("Error on getting next key stream letter. [3de8]\n"));
+            goto clean;
+        }
+
+        (*buf)[i] = CARD2ASCII(c);
     }
 
     (*buf)[count] = '\0';
@@ -395,11 +420,12 @@ clean:
 }
 
 /**
+ * ("Key-Move-Jokers")
  * Relocate the jokers to the positions given by the last two
  * cards in the deck.
  * This is an optional step for key generation.
  */
-static int px_kmovj(char * const key) {
+static int px_kmovj(card * const key) {
     int j;
     char ja_n, jb_n, ja = 0, jb = 0;
 
@@ -452,7 +478,7 @@ static int px_kmovj(char * const key) {
 int px_keygen(
     const char *password,
     const int mvjokers,
-    char * const key) {
+    card * const key) {
 
     int i,
         n = 0; /* counter for characters in password */
@@ -465,12 +491,11 @@ int px_keygen(
     while ((c = password[i++])) {
         if (!isalpha(c)) continue;
         n++;
-        c = toupper(c);
 
         if (!px_mjokers(key)) return -1;
         if (!px_tcut(key)) return -1;
         px_ccut(key, 0);
-        px_ccut(key, c - 0x40);
+        px_ccut(key, ASCII2CARD(c));
 
         if (mvjokers) {
             px_kmovj(key);
@@ -485,4 +510,6 @@ int px_keygen(
 
     return 0;
 }
+
+#undef INVALID_CARD
 

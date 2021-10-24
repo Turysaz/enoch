@@ -20,14 +20,15 @@
 #include <stdlib.h>
 #include <CUnit/CUnit.h>
 #include "./px_io_tests.h"
+#include "../src/px_common.h"
 #include "../src/px_io.h"
 
 extern int loglevel;
 
 void read_key_raw(void) {
     int result;
-    char key[54];
-    const char expected[54] =
+    card key[54];
+    const card expected[54] =
         { 1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12,
          13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
          25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36,
@@ -49,7 +50,7 @@ void read_key_raw(void) {
 
 void read_key_raw_too_short(void) {
     int result;
-    char key[54];
+    card key[54];
     /* This key is one byte too short */
     const char *keystr_1 =
         "01020304050607080910"
@@ -76,7 +77,7 @@ void read_key_raw_too_short(void) {
 
 void read_key_with_invalid_characters(void) {
     int result;
-    char key[54];
+    card key[54];
     const char *keystr_1 =
         "01020304050607080910"
         "11121314151617181920"

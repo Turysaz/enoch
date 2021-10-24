@@ -24,6 +24,7 @@
  */
 
 #include <stdio.h>
+#include "./px_common.h"
 
 /* FLAGS */
 #define PXO_RAW 1
@@ -47,7 +48,7 @@ void px_prcipher(
  * \para stream Pointer to the output file.
  * \para flags   Output options.
  */
-void px_prkey(const char * const key, FILE *stream, const unsigned int flags);
+void px_prkey(const card * const key, FILE *stream, const unsigned int flags);
 
 /**
  * Read a cipher text message.
@@ -68,6 +69,6 @@ int px_rdcipher(const char *ciphert, char **buf);
  *
  * \returns 0 on success, -1 on failure.
  */
-int px_rdkey(const char *keystr, char *key);
+int px_rdkey(const char *keystr, card *key);
 
 #endif

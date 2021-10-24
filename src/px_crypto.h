@@ -21,6 +21,8 @@
  *  Boston, MA  02110-1301, USA.
  */
 
+#include "./px_common.h"
+
 /**
  * Options for applying the pontifex algorithm.
  */
@@ -46,7 +48,7 @@ struct px_opts {
  *              0-terminator included.
  */
 int px_encrypt(
-    const char *key,
+    const card *key,
     const char *msg,
     const int nmsg,
     char **buf,
@@ -65,7 +67,7 @@ int px_encrypt(
  *              0-terminator included.
  */
 int px_decrypt(
-    const char *key,
+    const card *key,
     const char *msg,
     const int nmsg,
     char **buf,
@@ -82,7 +84,7 @@ int px_decrypt(
  * \returns     0 on success, -1 on failure.
  */
 int px_stream(
-    const char *key,
+    const card *key,
     const int count,
     char **buf,
     const struct px_opts *opts);
@@ -100,7 +102,7 @@ int px_stream(
 int px_keygen(
     const char *password,
     const int mvjokers,
-    char * const key);
+    card * const key);
 
 #endif
 
