@@ -375,7 +375,7 @@ static void _stream(struct runopts *args) {
  * Return:
  *      1 on success, 0 on failure
  */
-static int trypint(char *number, int *result) {
+static int _trypint(char *number, int *result) {
     char c;
     int i = 0;
 
@@ -473,7 +473,7 @@ static error_t parseargs(
             break;
         case 's': /* --stream=N */
             args->options->mode = MD_STRM;
-            if (!trypint(arg, &(args->options->length))) return ENOTSUP;
+            if (!_trypint(arg, &(args->options->length))) return ENOTSUP;
             break;
         case   1: /* --gen-key */
             args->options->mode = MD_PKEY;
