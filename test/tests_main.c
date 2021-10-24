@@ -21,6 +21,7 @@
 #include <CUnit/Basic.h>
 #include "./px_crypto_tests.h"
 #include "./px_io_tests.h"
+#include "./px_common_tests.h"
 
 int loglevel = -1;
 
@@ -29,6 +30,7 @@ int main(int argc, char **argv) {
        return CU_get_error();
    }
 
+   if (addsuite_px_common() == -1) goto cleanup;
    if (addsuite_px_crypto() == -1) goto cleanup;
    if (addsuite_px_io() == -1) goto cleanup;
 

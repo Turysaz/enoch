@@ -20,6 +20,7 @@ OBJECTS = src/enoch.o src/px_crypto.o src/px_io.o
 TESTOBJECTS = \
 	test/px_crypto_tests.o \
 	test/px_io_tests.o \
+	test/px_common_tests.o \
 	test/tests_main.o \
 	src/px_crypto.o \
 	src/px_io.o

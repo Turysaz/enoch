@@ -1,9 +1,4 @@
-#ifndef PX_COMMON__H_
-#define PX_COMMON__H_
-
 /*
- *  px_common.h : Common definitions
- *
  *  Implementation of Bruce Schneier's Pontifex/Solitaire cryptosystem.
  *  Copyright (C) 2021 Turysaz
  *
@@ -20,32 +15,8 @@
  *  You should have received a copy of the GNU General Public License along
  *  with this program; if not, write to the Free Software Foundation, Inc.,
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
  */
 
-/*
- * The cards are identified by the numbers 1-54 with 53 and 54 being
- * the jokers.
- * To distinguish them from other integers, especially regarding the
- * valid range, they are defined as a separate type.
- */
-
-#include <ctype.h>
-
-typedef char card;
-
-/**
- * Gets the ASCII char for a card value between 1 and 52.
- * 
- * \remarks Not valid for joker cards, they have no ASCII representation.
- *          Not valid for values not within [1..52]
- */
-#define CARD2ASCII(c) ((c > 26 ? c - 26 : c) + 0x40)
-
-/**
- * Gets the card letter value for an ASCII alphabetic character.
- * \remarks Only valid for alphabetic characters!
- */
-#define ASCII2CARD(c) (toupper(c) - 0x40)
-
-#endif
+int addsuite_px_common (void);
 
