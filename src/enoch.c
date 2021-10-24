@@ -136,6 +136,7 @@ struct runopts _defrunopts(void) {
  * Cleans and frees the content of a runopts struct.
  */
 static void _clrrunopts(struct runopts *opts) {
+    memset(opts->key, 0, 54); /* Clear key */
     if(opts->input != stdin) fclose(opts->input);
     if(opts->output != stdout) fclose(opts->output);
 }
