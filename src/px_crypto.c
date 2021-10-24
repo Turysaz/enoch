@@ -32,8 +32,12 @@
 #define INVALID_CARD (card)254
 
 /*
- * Move a card in the deck from position oldi to
- * position newi
+ * Move a card in the deck to another position.
+ * Indices are zero-based.
+ *
+ * \param deck  Pointer to the deck, containing numbers 1-54.
+ * \param oldi  Old position index.
+ * \param newi  New position index.
  */
 static void px_move(card *deck, int oldi, int newi) {
     card buffer;
@@ -53,9 +57,12 @@ static void px_move(card *deck, int oldi, int newi) {
 }
 
 /*
- * Performs the first solitaire round, which is moving the
- * joker cards.
- * Returns 0 on failure, 1 on success.
+ * Performs the first solitaire round.
+ * It moves the joker cards forward.
+ *
+ * \param deck  Pointer to the deck, containing numbers 1-54.
+ *
+ * \returns 0 on failure, 1 on success.
  */
 static int px_mjokers(card *deck) {
     int i, j;
@@ -72,7 +79,7 @@ static int px_mjokers(card *deck) {
         return 0;
     }
 
-    i = (j % 53) + 1;
+    i = (j % 53) + 1; /* Move 1 and wrap around if necessary. */
     LOG_DBG(("Joker A from %i to %i.\n", j, i));
     px_move(deck, j, i);
 
@@ -87,7 +94,7 @@ static int px_mjokers(card *deck) {
     }
 
     i = (j % 53) + 1;
-    i = (i % 53) + 1;
+    i = (i % 53) + 1; /*Joker B needs this twice. */
     LOG_DBG(("Joker B from %i to %i.\n", j, i));
     px_move(deck, j, i);
 
@@ -95,12 +102,15 @@ static int px_mjokers(card *deck) {
 }
 
 /*
- * Performs the second pontifex round, which is the
- * triple cut.
+ * Performs the second solitaire round, which is the triple cut.
+ *
+ * \param deck  Pointer to the deck, containing numbers 1-54.
+ *
+ * \returns 1 on success, 0 on failure.
  */
 static int px_tcut(card *deck) {
     int i,
-        ja = -1,
+        ja = -1, /* joker indices */
         jb = -1,
         j1 = -1,
         j2 = -1;
@@ -110,6 +120,7 @@ static int px_tcut(card *deck) {
 
     memset(buffer, 0, sizeof(buffer));
 
+    /* locate jokers */
     for (i = 0; i < sizeof(buffer); i++) {
         if (deck[i] == 53) ja = i;
         if (deck[i] == 54) jb = i;
@@ -121,9 +132,9 @@ static int px_tcut(card *deck) {
         goto clean;
     }
 
+    /* get joker order and sizes of the three parts */
     j1 = ja < jb ? ja : jb;
     j2 = ja > jb ? ja : jb;
-
     lp1 = j1;
     lp2 = j2-j1+1;
     lp3 = 53-j2;
@@ -132,10 +143,12 @@ static int px_tcut(card *deck) {
         "Triple cut:\nj1: %i, j2: %i\nlengths: %i, %i, %i\n",
         j1, j2, lp1, lp2, lp3));
 
+    /* rearrange parts */
     memcpy(buffer, deck+j2+1, lp3);
     memcpy(buffer+lp3, deck+j1, lp2);
     memcpy(buffer+lp2+lp3, deck, lp1);
 
+    /* write back to original deck */
     memcpy(deck, &buffer, sizeof(buffer));
 
     ret = 1;
@@ -146,11 +159,13 @@ clean:
 }
 
 /*
- * Count-cut operation.
- * pwdkey:
- *   For the encryption and encryption, set the pwdkey to 0.
- *   When generating a key from a password, this needs to be
- *   set to the current password character.
+ * Performs the third solitaire round, the count cut.
+ *
+ * \param deck  Pointer to the deck, containing numbers 1-54.
+ *
+ * \param pwdkey For the encryption and encryption, set the pwdkey to 0.
+ *               When generating a key from a password, this needs to be
+ *               set to the current password character.
  */
 static void px_ccut(card *deck, char pwdkey) {
     card buffer[54];
@@ -222,9 +237,15 @@ static card px_next(card *deck) {
 #define PX_DECR 1
 
 /*
+ * Cipher character substitution.
+ *
  * Returns the substitute for a single character m with the
- * key stream letter k with respect to the current mode
- * (encryption = 0 or decryption = 1).
+ * key stream letter k with respect to the current mode.
+ *
+ * \param m       Message character (1-26).
+ * \param k       Key character/card (1-52).
+ * \param decrypt Mode: 1 = decrypt, 0 = encrypt
+ * \returns Substituted character (1-26).
  */
 static card px_subst(card m, card k, const int decrypt) {
     char s; /* result */
@@ -280,7 +301,7 @@ static int px_cipher(
     }
 
     if (nmsg <= 0) {
-        ret = 0;
+        ret = 0; /* Not an error! */
         LOG_WRN(("Empty input, abort.\n"));
         goto clean;
     }
@@ -295,7 +316,7 @@ static int px_cipher(
     if (!*buf)
     {
         ret = -2;
-        LOG_ERR(("No memory. [64a6]"));
+        LOG_ERR(("No memory. [64a6]\n"));
         goto clean;
     }
 
@@ -315,7 +336,7 @@ static int px_cipher(
     if (i > nmsg + 1) {
         LOG_WRN(
             ("The message appears longer than specified."
-            " Parts of the message may remain unencrypted!"));
+            " Parts of the message may remain unencrypted!\n"));
     }
 
     /* padding with X */

@@ -392,6 +392,11 @@ static int _trypint(char *number, int *result) {
     return 1;
 }
 
+/*
+ *  Step 2 of the argument evaluation:
+ *  After all arguments have been collected and stored in
+ *  the cliargs struct, they can now be evaluated semantically.
+ */
 static error_t _evalpargs(struct cliargs *args) {
     int keydef = 0; /* Track how many options define the key.
                      * Should be 1. */
@@ -457,7 +462,10 @@ static error_t _evalpargs(struct cliargs *args) {
 }
 
 /*
- * Parse arguments.
+ *  Step 1 of the argument evaluation:
+ *  Collect all arguments and store them as a cliargs struct.
+ *  Call _evalpargs(..) at last to evaluate the arguments
+ *  semantically.
  */
 static error_t parseargs(
         int key,
@@ -525,6 +533,10 @@ static error_t parseargs(
             loglevel = LOGLEVEL_ERR;
             break;
         case ARGP_KEY_END:
+            /*
+             * All arguments have been collected.
+             * Evaluate them now.
+             */
             return _evalpargs(args);
         default:
             return ARGP_ERR_UNKNOWN;
@@ -533,6 +545,7 @@ static error_t parseargs(
     return 0;
 }
 
+/* Parser struct for argp. */
 static struct argp parser = { opts, parseargs, adoc, doc };
 
 int main(int argc, char **argv) {
@@ -544,7 +557,7 @@ int main(int argc, char **argv) {
     arguments = _defcliargs(&options);
 
     failure = argp_parse(&parser, argc, argv, 0, 0, &arguments);
-    _clrcliargs(&arguments);
+    _clrcliargs(&arguments); /* Raw args are no longer needed. */
 
     if (failure) {
         LOG_ERR(("%s\n", strerror(failure)));
