@@ -29,6 +29,9 @@
 
 static const char beg_msgblk[] = "-----BEGIN PONTIFEX MESSAGE-----";
 static const char end_msgblk[] = "-----END PONTIFEX MESSAGE-----";
+static const char beg_keyblk[] = "-----BEGIN PONTIFEX KEY-----";
+static const char end_keyblk[] = "-----END PONTIFEX KEY-----";
+
 
 /*
  * =============  Header API implementation ================
@@ -71,13 +74,19 @@ void px_prcipher(
  * See header.
  */
 void px_prkey(const card * const key, FILE *stream, const unsigned int flags) {
-    int i;
+    int i,
+        raw; /* bool flag */
+
+    raw = flags & PXO_RAW;
+
+    if (!raw) fprintf(stream, "%s\n", beg_keyblk);
 
     for (i = 0; i < 54; i++) {
-        /* TODO: validate? */
         fprintf(stream, "%02i", key[i]);
     }
     fputc('\n', stream);
+
+    if (!raw) fprintf(stream, "%s\n", end_keyblk);
 }
 
 /**

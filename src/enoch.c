@@ -573,7 +573,7 @@ int main(int argc, char **argv) {
             _stream(&options);
             break;
         case MD_PKEY:
-            px_prkey(options.key, options.output, PXO_RAW);
+            px_prkey(options.key, options.output, options.raw ? PXO_RAW : 0);
             break;
     }
 
